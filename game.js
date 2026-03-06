@@ -12,20 +12,20 @@
 // ASSETS CONFIGURATION
 // ===========================================
 const ASSETS = {
-  player: 'images/player-level1.png',
-  apple: 'assets/blackguy.png',
-  banana: 'assets/banana.png',
-  broccoli: 'assets/broccoli.png',
-  onion: 'assets/onion.png',
-  level1Background: 'assets/level1-bg.png',
-  grass: 'assets/grass.png',
-  cloud: 'assets/cloud.png',
-  cat: 'assets/cat.png',
-  level2Background: 'assets/garden-bg.png',
-  level3Background: 'assets/dreamy-path.png',
-  runner: 'images/player-level3.png',
-  obstacle: 'assets/obstacle.png',
-  collectible: 'assets/collectible.png',
+  player: './images/player-level1.png',
+  apple: './assets/blackguy.png',
+  banana: './assets/banana.png',
+  broccoli: './assets/broccoli.png',
+  onion: './assets/onion.png',
+  level1Background: './assets/level1-bg.png',
+  grass: './assets/grass.png',
+  cloud: './assets/cloud.png',
+  cat: './assets/cat.png',
+  level2Background: './assets/garden-bg.png',
+  level3Background: './assets/dreamy-path.png',
+  runner: './images/player-level3.png',
+  obstacle: './assets/obstacle.png',
+  collectible: './assets/collectible.png',
 };
 
 // ===========================================
@@ -249,38 +249,54 @@ const GAMEPLAY = {
 };
 
 // ===========================================
-// IMAGE LOADER
+// IMAGE LOADER - Robust loading with retries
 // ===========================================
 const loadedImages = {};
 const imageLoadStatus = {};
+let assetsLoaded = false;
 
 function loadImage(key, path) {
-  if (loadedImages[key]) return loadedImages[key];
-  if (imageLoadStatus[key] === 'loading') return null;
-  if (imageLoadStatus[key] === 'failed') return null;
-
-  imageLoadStatus[key] = 'loading';
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    loadedImages[key] = img;
-    imageLoadStatus[key] = 'loaded';
-  };
-  img.onerror = () => {
-    imageLoadStatus[key] = 'failed';
-  };
-  img.src = path;
-  return null;
+  return new Promise((resolve, reject) => {
+    if (loadedImages[key]) {
+      resolve(loadedImages[key]);
+      return;
+    }
+    
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      loadedImages[key] = img;
+      imageLoadStatus[key] = 'loaded';
+      resolve(img);
+    };
+    
+    img.onerror = (e) => {
+      imageLoadStatus[key] = 'failed';
+      reject(new Error(`Failed to load ${key}`));
+    };
+    
+    // Set src after handlers are attached
+    img.src = path;
+    imageLoadStatus[key] = 'loading';
+  });
 }
 
 function getImage(key) {
-  return loadedImages[key] || null;
+  const img = loadedImages[key];
+  if (img && img.complete && img.naturalWidth > 0) {
+    return img;
+  }
+  return null;
 }
 
-function preloadAssets() {
-  Object.entries(ASSETS).forEach(([key, path]) => {
-    loadImage(key, path);
+async function preloadAssets() {
+  const promises = Object.entries(ASSETS).map(([key, path]) => {
+    return loadImage(key, path).catch(() => null);
   });
+  
+  await Promise.all(promises);
+  assetsLoaded = true;
 }
 
 // ===========================================
@@ -2751,7 +2767,11 @@ function drawClouds() {
   ctx.fill();
 }
 
-// Initialize
-preloadAssets();
-player.init();
-requestAnimationFrame(gameLoop);
+// Initialize with proper asset loading
+async function init() {
+  await preloadAssets();
+  player.init();
+  requestAnimationFrame(gameLoop);
+}
+
+init();
