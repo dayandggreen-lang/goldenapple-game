@@ -12,20 +12,20 @@
 // ASSETS CONFIGURATION
 // ===========================================
 const ASSETS = {
-  player: '/images/player-level1.png',
-  apple: '/assets/blackguy.png',
-  banana: '/assets/banana.png',
-  broccoli: '/assets/broccoli.png',
-  onion: '/assets/onion.png',
-  level1Background: '/assets/level1-bg.png',
-  grass: '/assets/grass.png',
-  cloud: '/assets/cloud.png',
-  cat: '/assets/cat.png',
-  level2Background: '/assets/garden-bg.png',
-  level3Background: '/assets/dreamy-path.png',
-  runner: '/images/player-level3.png',
-  obstacle: '/assets/obstacle.png',
-  collectible: '/assets/collectible.png',
+  player: 'images/player-level1.png',
+  apple: 'assets/blackguy.png',
+  banana: 'assets/banana.png',
+  broccoli: 'assets/broccoli.png',
+  onion: 'assets/onion.png',
+  level1Background: 'assets/level1-bg.png',
+  grass: 'assets/grass.png',
+  cloud: 'assets/cloud.png',
+  cat: 'assets/cat.png',
+  level2Background: 'assets/garden-bg.png',
+  level3Background: 'assets/dreamy-path.png',
+  runner: 'images/player-level3.png',
+  obstacle: 'assets/obstacle.png',
+  collectible: 'assets/collectible.png',
 };
 
 // ===========================================
