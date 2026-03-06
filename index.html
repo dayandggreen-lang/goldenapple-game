@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Dad's Apple Catch</title>
+  <title>Golden Apple - Cozy Mini Games</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -12,15 +15,31 @@
     }
 
     body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(160deg, #F4E8E8 0%, #E8E0F0 50%, #E0E8E8 100%);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Quicksand', 'Nunito', 'Segoe UI', sans-serif;
       overflow: hidden;
       touch-action: manipulation;
+    }
+
+    /* Soft ambient background elements */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(248, 220, 220, 0.3) 0%, transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(220, 230, 248, 0.3) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(230, 248, 230, 0.2) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
     }
 
     #gameContainer {
@@ -33,56 +52,74 @@
     }
 
     #gameCanvas {
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-      background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+      border-radius: 20px;
+      box-shadow: 
+        0 8px 32px rgba(180, 160, 160, 0.2),
+        0 2px 8px rgba(180, 160, 160, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      background: linear-gradient(180deg, #FDE8E8 0%, #E8F4E8 100%);
+      border: 1px solid rgba(200, 180, 180, 0.2);
     }
 
-    /* Mobile Controls */
+    /* Mobile Controls - Cozy Style */
     #mobileControls {
       display: none;
       flex-direction: column;
       align-items: center;
       width: 100%;
       max-width: 400px;
-      padding: 10px 20px;
-      margin-top: 10px;
-      gap: 8px;
+      padding: 12px 20px;
+      margin-top: 12px;
+      gap: 10px;
     }
 
     #controlsRow {
       display: flex;
       width: 100%;
       justify-content: space-between;
-      gap: 20px;
+      gap: 16px;
     }
 
     .controlBtn {
       flex: 1;
-      padding: 18px 10px;
-      font-size: 20px;
-      font-weight: bold;
+      padding: 16px 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Quicksand', sans-serif;
       border: none;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.9);
-      color: #667eea;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #FFFCFA 0%, #F8F4F2 100%);
+      color: #6B5858;
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      transition: transform 0.1s, box-shadow 0.1s;
+      box-shadow: 
+        0 4px 12px rgba(180, 160, 160, 0.15),
+        0 1px 3px rgba(180, 160, 160, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      border: 1px solid rgba(200, 184, 184, 0.3);
     }
 
     .controlBtn:active {
-      transform: scale(0.95);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transform: scale(0.96) translateY(1px);
+      box-shadow: 
+        0 2px 6px rgba(180, 160, 160, 0.15),
+        inset 0 1px 2px rgba(180, 160, 160, 0.1);
     }
 
     .controlBtn.vertical {
       flex: none;
       width: 100px;
       padding: 12px 10px;
+    }
+
+    .controlBtn .arrow {
+      display: block;
+      font-size: 12px;
+      color: #A89888;
+      margin-bottom: 2px;
     }
 
     /* Show mobile controls on touch devices */
@@ -94,10 +131,12 @@
 
     /* Instructions text */
     #instructions {
-      color: rgba(255, 255, 255, 0.8);
+      color: #8B7878;
       font-size: 12px;
-      margin-top: 10px;
+      font-weight: 500;
+      margin-top: 12px;
       text-align: center;
+      letter-spacing: 0.02em;
     }
 
     @media (hover: none) and (pointer: coarse) {
@@ -105,18 +144,90 @@
         display: none;
       }
     }
+
+    /* Small decorative elements */
+    .decoration {
+      position: fixed;
+      pointer-events: none;
+      opacity: 0.4;
+      z-index: -1;
+    }
+
+    .flower-1 {
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, #F4C8D4 40%, transparent 40%);
+      border-radius: 50%;
+      top: 15%;
+      left: 8%;
+    }
+
+    .flower-2 {
+      width: 16px;
+      height: 16px;
+      background: radial-gradient(circle, #F8E8B8 40%, transparent 40%);
+      border-radius: 50%;
+      top: 25%;
+      right: 12%;
+    }
+
+    .flower-3 {
+      width: 14px;
+      height: 14px;
+      background: radial-gradient(circle, #D4E8F4 40%, transparent 40%);
+      border-radius: 50%;
+      bottom: 20%;
+      left: 15%;
+    }
+
+    .flower-4 {
+      width: 18px;
+      height: 18px;
+      background: radial-gradient(circle, #E8D4E8 40%, transparent 40%);
+      border-radius: 50%;
+      bottom: 30%;
+      right: 10%;
+    }
+
+    /* Loading animation */
+    @keyframes softPulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .loading {
+      animation: softPulse 1.5s ease-in-out infinite;
+    }
   </style>
 </head>
 <body>
+  <!-- Decorative elements -->
+  <div class="decoration flower-1"></div>
+  <div class="decoration flower-2"></div>
+  <div class="decoration flower-3"></div>
+  <div class="decoration flower-4"></div>
+
   <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
     <div id="mobileControls">
-      <button class="controlBtn vertical" id="upBtn">&#9650; UP</button>
+      <button class="controlBtn vertical" id="upBtn">
+        <span class="arrow">&#9650;</span>
+        UP
+      </button>
       <div id="controlsRow">
-        <button class="controlBtn" id="leftBtn">&#9664; LEFT</button>
-        <button class="controlBtn" id="rightBtn">RIGHT &#9654;</button>
+        <button class="controlBtn" id="leftBtn">
+          <span class="arrow">&#9664;</span>
+          LEFT
+        </button>
+        <button class="controlBtn" id="rightBtn">
+          <span class="arrow">&#9654;</span>
+          RIGHT
+        </button>
       </div>
-      <button class="controlBtn vertical" id="downBtn">&#9660; DOWN</button>
+      <button class="controlBtn vertical" id="downBtn">
+        <span class="arrow">&#9660;</span>
+        DOWN
+      </button>
     </div>
     <p id="instructions">Use arrow keys to move</p>
   </div>
