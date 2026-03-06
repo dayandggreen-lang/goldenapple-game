@@ -12,7 +12,7 @@
 // ASSETS CONFIGURATION
 // ===========================================
 const ASSETS = {
-  player: '/assets/otlomi.png',
+  player: '/images/player-level1.png',
   apple: '/assets/blackguy.png',
   banana: '/assets/banana.png',
   broccoli: '/assets/broccoli.png',
@@ -23,9 +23,18 @@ const ASSETS = {
   cat: '/assets/cat.png',
   level2Background: '/assets/garden-bg.png',
   level3Background: '/assets/dreamy-path.png',
-  runner: '/assets/runner.png',
+  runner: '/images/player-level3.png',
   obstacle: '/assets/obstacle.png',
   collectible: '/assets/collectible.png',
+};
+
+// ===========================================
+// PIXEL ART EFFECT CONFIGURATION
+// ===========================================
+const PIXEL_EFFECT = {
+  enabled: true,
+  pixelSize: 2,        // Subtle pixel size
+  softness: 0.7,       // Blend with original (0 = full pixel, 1 = no pixel)
 };
 
 // ===========================================
@@ -407,14 +416,41 @@ const player = {
     const img = getImage('player');
     const drawY = this.y + this.bobOffset;
     
+    // Soft shadow
+    ctx.fillStyle = 'rgba(168, 152, 136, 0.2)';
+    ctx.beginPath();
+    ctx.ellipse(this.x + this.width / 2, this.y + this.height + 5, this.width * 0.4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
     if (img) {
-      // Soft shadow
-      ctx.fillStyle = 'rgba(168, 152, 136, 0.2)';
+      // Draw circular cropped image with soft border
+      ctx.save();
+      const imgCx = this.x + this.width / 2;
+      const imgCy = drawY + this.height / 2;
+      const radius = Math.min(this.width, this.height) / 2;
+      
+      // Soft outer glow
+      ctx.fillStyle = 'rgba(244, 200, 200, 0.3)';
       ctx.beginPath();
-      ctx.ellipse(this.x + this.width / 2, this.y + this.height + 5, this.width * 0.4, 8, 0, 0, Math.PI * 2);
+      ctx.arc(imgCx, imgCy, radius + 4, 0, Math.PI * 2);
       ctx.fill();
       
-      ctx.drawImage(img, this.x, drawY, this.width, this.height);
+      // Clip to circle
+      ctx.beginPath();
+      ctx.arc(imgCx, imgCy, radius, 0, Math.PI * 2);
+      ctx.clip();
+      
+      // Draw image centered and cropped
+      const imgSize = Math.max(this.width, this.height) * 1.2;
+      ctx.drawImage(img, imgCx - imgSize / 2, imgCy - imgSize / 2, imgSize, imgSize);
+      ctx.restore();
+      
+      // Soft border
+      ctx.strokeStyle = 'rgba(200, 180, 180, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(imgCx, imgCy, radius, 0, Math.PI * 2);
+      ctx.stroke();
     } else {
       this.drawFallback(drawY);
     }
@@ -1749,7 +1785,7 @@ function drawLevel3() {
     ctx.fill();
   });
 
-  // Draw player (cute running character)
+  // Draw player (cute running character with photo)
   const playerLaneActual = level3.isMovingLane 
     ? level3.playerLane + (level3.targetLane - level3.playerLane) * level3.laneProgress
     : level3.playerLane;
@@ -1761,62 +1797,103 @@ function drawLevel3() {
   // Shadow
   ctx.fillStyle = 'rgba(168, 152, 136, 0.25)';
   ctx.beginPath();
-  ctx.ellipse(px, py + 55, 18, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(px, py + 55, 22, 10, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Legs
-  ctx.fillStyle = t.runnerBody;
-  ctx.beginPath();
-  ctx.ellipse(px - 8, py + 40 + legFrame * 5, 6, 12, 0.2, 0, Math.PI * 2);
-  ctx.ellipse(px + 8, py + 40 - legFrame * 5, 6, 12, -0.2, 0, Math.PI * 2);
-  ctx.fill();
+  const runnerImg = getImage('runner');
+  
+  if (runnerImg) {
+    // Draw circular cropped photo with bouncing animation
+    ctx.save();
+    const imgCy = py + 15 + runBob;
+    const radius = 28;
+    
+    // Soft outer glow
+    ctx.fillStyle = 'rgba(244, 200, 220, 0.4)';
+    ctx.beginPath();
+    ctx.arc(px, imgCy, radius + 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Clip to circle
+    ctx.beginPath();
+    ctx.arc(px, imgCy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    
+    // Draw image centered and cropped
+    const imgSize = radius * 2.4;
+    ctx.drawImage(runnerImg, px - imgSize / 2, imgCy - imgSize / 2, imgSize, imgSize);
+    ctx.restore();
+    
+    // Soft border with slight animation
+    ctx.strokeStyle = 'rgba(220, 180, 190, 0.6)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(px, imgCy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Cute feet/legs animation below the circle
+    ctx.fillStyle = '#E8D4C8';
+    ctx.beginPath();
+    ctx.ellipse(px - 10, py + 50 + legFrame * 4, 8, 12, 0.15, 0, Math.PI * 2);
+    ctx.ellipse(px + 10, py + 50 - legFrame * 4, 8, 12, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Little shoe details
+    ctx.fillStyle = '#D4B8B8';
+    ctx.beginPath();
+    ctx.ellipse(px - 10, py + 58 + legFrame * 4, 6, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(px + 10, py + 58 - legFrame * 4, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Fallback cute character
+    // Legs
+    ctx.fillStyle = t.runnerBody;
+    ctx.beginPath();
+    ctx.ellipse(px - 8, py + 40 + legFrame * 5, 6, 12, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(px + 8, py + 40 - legFrame * 5, 6, 12, -0.2, 0, Math.PI * 2);
+    ctx.fill();
 
-  // Body
-  ctx.fillStyle = t.runnerBody;
-  ctx.beginPath();
-  ctx.ellipse(px, py + 20 + runBob, 16, 22, 0, 0, Math.PI * 2);
-  ctx.fill();
+    // Body
+    ctx.fillStyle = t.runnerBody;
+    ctx.beginPath();
+    ctx.ellipse(px, py + 20 + runBob, 16, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-  // Head
-  ctx.beginPath();
-  ctx.arc(px, py - 8 + runBob, 14, 0, Math.PI * 2);
-  ctx.fill();
+    // Head
+    ctx.beginPath();
+    ctx.arc(px, py - 8 + runBob, 14, 0, Math.PI * 2);
+    ctx.fill();
 
-  // Hair
-  ctx.fillStyle = t.runnerHair;
-  ctx.beginPath();
-  ctx.arc(px, py - 12 + runBob, 12, Math.PI, 0);
-  ctx.fill();
-  // Hair flowing back
-  ctx.beginPath();
-  ctx.moveTo(px + 8, py - 12 + runBob);
-  ctx.quadraticCurveTo(px + 20, py - 8 + runBob, px + 25, py - 5 + runBob + Math.sin(globalTime * 0.01) * 3);
-  ctx.quadraticCurveTo(px + 18, py - 5 + runBob, px + 10, py - 6 + runBob);
-  ctx.fill();
+    // Hair
+    ctx.fillStyle = t.runnerHair;
+    ctx.beginPath();
+    ctx.arc(px, py - 12 + runBob, 12, Math.PI, 0);
+    ctx.fill();
 
-  // Face
-  ctx.fillStyle = '#4A4040';
-  ctx.beginPath();
-  ctx.arc(px - 4, py - 10 + runBob, 2, 0, Math.PI * 2);
-  ctx.arc(px + 4, py - 10 + runBob, 2, 0, Math.PI * 2);
-  ctx.fill();
+    // Face
+    ctx.fillStyle = '#4A4040';
+    ctx.beginPath();
+    ctx.arc(px - 4, py - 10 + runBob, 2, 0, Math.PI * 2);
+    ctx.arc(px + 4, py - 10 + runBob, 2, 0, Math.PI * 2);
+    ctx.fill();
 
-  // Blush
-  ctx.fillStyle = t.runnerBlush;
-  ctx.globalAlpha = 0.4;
-  ctx.beginPath();
-  ctx.ellipse(px - 9, py - 5 + runBob, 4, 2.5, 0, 0, Math.PI * 2);
-  ctx.ellipse(px + 9, py - 5 + runBob, 4, 2.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
+    // Blush
+    ctx.fillStyle = t.runnerBlush;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.ellipse(px - 9, py - 5 + runBob, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(px + 9, py - 5 + runBob, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
-  // Smile
-  ctx.strokeStyle = '#6B5858';
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.arc(px, py - 4 + runBob, 4, 0.2 * Math.PI, 0.8 * Math.PI);
-  ctx.stroke();
+    // Smile
+    ctx.strokeStyle = '#6B5858';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(px, py - 4 + runBob, 4, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+  }
 
   // Draw Level 3 UI
   drawLevel3UI();
@@ -2442,6 +2519,63 @@ canvas.addEventListener('touchend', (e) => {
 });
 
 // ===========================================
+// PIXEL ART EFFECT - Subtle Lo-Fi Filter
+// ===========================================
+function applyPixelEffect() {
+  if (!PIXEL_EFFECT.enabled) return;
+  
+  const pixelSize = PIXEL_EFFECT.pixelSize;
+  const softness = PIXEL_EFFECT.softness;
+  
+  // Get image data
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  // Create pixelated version
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = width;
+  tempCanvas.height = height;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  // Draw original scaled down then up for pixelation
+  const scaledW = Math.floor(width / pixelSize);
+  const scaledH = Math.floor(height / pixelSize);
+  
+  tempCtx.imageSmoothingEnabled = false;
+  tempCtx.drawImage(canvas, 0, 0, scaledW, scaledH);
+  
+  // Clear and draw back up
+  ctx.imageSmoothingEnabled = false;
+  
+  // Blend pixelated with original based on softness
+  if (softness > 0) {
+    // Save original
+    const originalData = new ImageData(new Uint8ClampedArray(data), width, height);
+    
+    // Draw pixelated
+    ctx.drawImage(tempCanvas, 0, 0, scaledW, scaledH, 0, 0, width, height);
+    
+    // Get pixelated data
+    const pixelatedData = ctx.getImageData(0, 0, width, height);
+    
+    // Blend
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = originalData.data[i] * softness + pixelatedData.data[i] * (1 - softness);
+      data[i + 1] = originalData.data[i + 1] * softness + pixelatedData.data[i + 1] * (1 - softness);
+      data[i + 2] = originalData.data[i + 2] * softness + pixelatedData.data[i + 2] * (1 - softness);
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+  } else {
+    ctx.drawImage(tempCanvas, 0, 0, scaledW, scaledH, 0, 0, width, height);
+  }
+  
+  ctx.imageSmoothingEnabled = true;
+}
+
+// ===========================================
 // MAIN GAME LOOP
 // ===========================================
 let lastTime = 0;
@@ -2525,6 +2659,9 @@ function gameLoop(timestamp) {
     drawLevel2Background();
     drawFinalWinScreen();
   }
+
+  // Apply subtle pixel effect for lo-fi aesthetic
+  applyPixelEffect();
 
   requestAnimationFrame(gameLoop);
 }
