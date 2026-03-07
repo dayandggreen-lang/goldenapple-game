@@ -13,7 +13,9 @@
 // ASSETS CONFIGURATION
 // ===========================================
 const ASSETS = {
-  player: './images/player-level1.png',
+  // Unified cozy player sprite
+  anya: './assets/anya.png',
+  player: './assets/anya.png',
   apple: './assets/blackguy.png',
   banana: './assets/banana.png',
   broccoli: './assets/broccoli.png',
@@ -24,7 +26,7 @@ const ASSETS = {
   cat: './assets/cat.png',
   level2Background: './assets/garden-bg.png',
   level3Background: './assets/dreamy-path.png',
-  runner: './images/player-level3.png',
+  runner: './assets/anya.png',
   obstacle: './assets/obstacle.png',
   collectible: './assets/collectible.png',
 };
@@ -832,6 +834,153 @@ function drawPlayerGlow(x, y, radius) {
   ctx.fill();
 }
 
+// Shared cozy player renderer using anya sprite
+function drawAnyaSprite(centerX, feetY, options = {}) {
+  const scale = options.scale ?? 1;
+  const bob = options.bob ?? 0;
+  const runPhase = options.runPhase ?? 0;
+  const img =
+    getImage('anya') ||
+    getImage('player') ||
+    getImage('runner');
+
+  const breathOffset = ambientState.playerBreath || 0;
+  const isBlinking = ambientState.playerBlink?.isBlinking || false;
+
+  // Soft shadow
+  ctx.fillStyle = 'rgba(168, 152, 136, 0.22)';
+  ctx.beginPath();
+  ctx.ellipse(
+    centerX,
+    feetY + 4 * scale,
+    18 * scale + Math.abs(breathOffset) * 0.3,
+    6 * scale,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  if (img) {
+    const spriteHeight = 80 * scale;
+    const aspect =
+      img.naturalWidth && img.naturalHeight
+        ? img.naturalWidth / img.naturalHeight
+        : 0.75;
+    const spriteWidth = spriteHeight * aspect;
+    const centerY = feetY - spriteHeight / 2 + bob + breathOffset;
+
+    ctx.save();
+    const prevSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(centerX, centerY);
+    const tilt = (options.tilt || 0) + Math.sin(globalTime * 0.004 + runPhase) * 0.03;
+    ctx.rotate(tilt);
+    ctx.drawImage(img, -spriteWidth / 2, -spriteHeight / 2, spriteWidth, spriteHeight);
+    ctx.imageSmoothingEnabled = prevSmoothing;
+    ctx.restore();
+
+    // Simple arm hints for a bit of motion
+    const armSwing = Math.sin(globalTime * 0.02 + runPhase) * 4 * scale;
+    ctx.fillStyle = 'rgba(245, 224, 211, 0.7)';
+    ctx.beginPath();
+    ctx.roundRect(
+      centerX - spriteWidth * 0.33,
+      centerY + 4 * scale + armSwing,
+      6 * scale,
+      16 * scale,
+      3
+    );
+    ctx.roundRect(
+      centerX + spriteWidth * 0.27,
+      centerY + 4 * scale - armSwing,
+      6 * scale,
+      16 * scale,
+      3
+    );
+    ctx.fill();
+
+    // Blinking overlay
+    if (isBlinking) {
+      const eyeY = centerY - spriteHeight * 0.18;
+      const eyeOffsetX = 8 * scale;
+      ctx.fillStyle = 'rgba(80, 60, 50, 0.7)';
+      ctx.beginPath();
+      ctx.roundRect(
+        centerX - eyeOffsetX - 4 * scale,
+        eyeY - 2 * scale,
+        8 * scale,
+        4 * scale,
+        2
+      );
+      ctx.roundRect(
+        centerX + eyeOffsetX - 4 * scale,
+        eyeY - 2 * scale,
+        8 * scale,
+        4 * scale,
+        2
+      );
+      ctx.fill();
+    }
+    return;
+  }
+
+  // Fallback: soft drawn character
+  const t = THEME.level1;
+  const cx = centerX;
+  const drawY = feetY - 65 * scale + bob;
+
+  ctx.fillStyle = t.playerBody;
+  ctx.beginPath();
+  ctx.ellipse(
+    cx,
+    drawY + 48 * scale,
+    22 * scale,
+    25 * scale,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  ctx.fillStyle = t.playerSkin;
+  ctx.beginPath();
+  ctx.arc(cx, drawY + 18 * scale, 16 * scale, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = t.playerBlush;
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.arc(cx - 10 * scale, drawY + 22 * scale, 4 * scale, 0, Math.PI * 2);
+  ctx.arc(cx + 10 * scale, drawY + 22 * scale, 4 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  if (isBlinking) {
+    ctx.strokeStyle = t.playerDetail;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx - 5 * scale, drawY + 16 * scale, 3 * scale, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + 5 * scale, drawY + 16 * scale, 3 * scale, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = t.playerDetail;
+    ctx.beginPath();
+    ctx.arc(cx - 5 * scale, drawY + 16 * scale, 2.5 * scale, 0, Math.PI * 2);
+    ctx.arc(cx + 5 * scale, drawY + 16 * scale, 2.5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = t.playerDetail;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(cx, drawY + 20 * scale, 5 * scale, 0.2 * Math.PI, 0.8 * Math.PI);
+  ctx.stroke();
+}
+
 function drawAmbientLayer(layer) {
   // Layer 0: Behind everything (parallax clouds)
   if (layer === 0) {
@@ -915,58 +1064,11 @@ const player = {
   },
 
   draw() {
-    const img = getImage('player');
-    // Add breathing animation from ambient state
     const breathOffset = ambientState.playerBreath || 0;
     const drawY = this.y + this.bobOffset + breathOffset;
-    
-    // Soft shadow (pulses slightly with breath)
-    ctx.fillStyle = 'rgba(168, 152, 136, 0.2)';
-    ctx.beginPath();
-    ctx.ellipse(this.x + this.width / 2, this.y + this.height + 5, this.width * 0.4 + breathOffset * 0.5, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    if (img) {
-      // Draw circular cropped image with soft border
-      ctx.save();
-      const imgCx = this.x + this.width / 2;
-      const imgCy = drawY + this.height / 2;
-      const radius = Math.min(this.width, this.height) / 2;
-      
-      // Soft outer glow (pulses gently)
-      const glowPulse = 0.3 + Math.sin(globalTime * 0.002) * 0.1;
-      ctx.fillStyle = `rgba(244, 200, 200, ${glowPulse})`;
-      ctx.beginPath();
-      ctx.arc(imgCx, imgCy, radius + 4 + breathOffset * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Clip to circle
-      ctx.beginPath();
-      ctx.arc(imgCx, imgCy, radius, 0, Math.PI * 2);
-      ctx.clip();
-      
-      // Draw image centered and cropped
-      const imgSize = Math.max(this.width, this.height) * 1.2;
-      ctx.drawImage(img, imgCx - imgSize / 2, imgCy - imgSize / 2, imgSize, imgSize);
-      ctx.restore();
-      
-      // Soft border
-      ctx.strokeStyle = 'rgba(200, 180, 180, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(imgCx, imgCy, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      const isBlinking = ambientState.playerBlink?.isBlinking || false;
-      if (isBlinking) {
-        ctx.fillStyle = 'rgba(80, 60, 50, 0.55)';
-        ctx.beginPath();
-        ctx.arc(imgCx - 6, imgCy - 2, 4, 0, Math.PI * 2);
-        ctx.arc(imgCx + 6, imgCy - 2, 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else {
-      this.drawFallback(drawY);
-    }
+    const centerX = this.x + this.width / 2;
+    const feetY = this.y + this.height + 5;
+    drawAnyaSprite(centerX, feetY, { bob: this.bobOffset, scale: 0.9 });
   },
 
   drawFallback(drawY) {
@@ -2792,27 +2894,106 @@ function drawLevel4Bush(x, y, hasCat, shakeTime) {
 }
 
 function drawLevel4Cat(x, y, scale) {
-  const catImg = getImage('cat');
-  if (catImg) {
-    const w = 50 * (scale || 1);
-    const h = 45 * (scale || 1);
-    ctx.drawImage(catImg, x - w / 2, y - h / 2, w, h);
-    return;
-  }
-  const t = THEME.level2;
-  ctx.fillStyle = t.catBody;
+  const s = scale || 1;
+  const bodyColor = '#F6B788';      // Cozy orange
+  const bellyColor = '#FFE9D4';
+  const stripeColor = '#E39C68';
+  const earOuter = '#F2C2A2';
+  const earInner = '#F7D0C4';
+  const eyeColor = '#5F6C6A';
+
+  // Shadow
+  ctx.fillStyle = 'rgba(160, 130, 110, 0.25)';
   ctx.beginPath();
-  ctx.ellipse(x, y + 5, 18 * (scale || 1), 22 * (scale || 1), 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y + 20 * s, 18 * s, 6 * s, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = t.catBelly;
+
+  // Tail
+  ctx.strokeStyle = bodyColor;
+  ctx.lineWidth = 6 * s;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.ellipse(x, y + 12, 10 * (scale || 1), 12 * (scale || 1), 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = t.catEyes;
+  ctx.moveTo(x + 20 * s, y + 6 * s);
+  ctx.quadraticCurveTo(x + 32 * s, y - 6 * s, x + 22 * s, y - 16 * s);
+  ctx.stroke();
+
+  // Body
+  ctx.fillStyle = bodyColor;
   ctx.beginPath();
-  ctx.arc(x - 6, y - 5, 4, 0, Math.PI * 2);
-  ctx.arc(x + 6, y - 5, 4, 0, Math.PI * 2);
+  ctx.ellipse(x, y + 4 * s, 20 * s, 18 * s, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // Belly
+  ctx.fillStyle = bellyColor;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 8 * s, 11 * s, 10 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath();
+  ctx.arc(x, y - 10 * s, 14 * s, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ears
+  ctx.fillStyle = earOuter;
+  ctx.beginPath();
+  ctx.moveTo(x - 10 * s, y - 16 * s);
+  ctx.lineTo(x - 4 * s, y - 24 * s);
+  ctx.lineTo(x - 1 * s, y - 14 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 10 * s, y - 16 * s);
+  ctx.lineTo(x + 4 * s, y - 24 * s);
+  ctx.lineTo(x + 1 * s, y - 14 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = earInner;
+  ctx.beginPath();
+  ctx.moveTo(x - 8 * s, y - 17 * s);
+  ctx.lineTo(x - 4 * s, y - 21 * s);
+  ctx.lineTo(x - 2 * s, y - 14 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 8 * s, y - 17 * s);
+  ctx.lineTo(x + 4 * s, y - 21 * s);
+  ctx.lineTo(x + 2 * s, y - 14 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  // Stripes
+  ctx.strokeStyle = stripeColor;
+  ctx.lineWidth = 3 * s;
+  ctx.beginPath();
+  ctx.moveTo(x - 6 * s, y - 6 * s);
+  ctx.lineTo(x - 1 * s, y - 8 * s);
+  ctx.moveTo(x + 6 * s, y - 6 * s);
+  ctx.lineTo(x + 1 * s, y - 8 * s);
+  ctx.stroke();
+
+  // Face
+  ctx.fillStyle = eyeColor;
+  ctx.beginPath();
+  ctx.arc(x - 5 * s, y - 9 * s, 2.3 * s, 0, Math.PI * 2);
+  ctx.arc(x + 5 * s, y - 9 * s, 2.3 * s, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Nose and mouth
+  ctx.fillStyle = '#E8A0A0';
+  ctx.beginPath();
+  ctx.arc(x, y - 5 * s, 1.6 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#A87870';
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 3.5 * s);
+  ctx.quadraticCurveTo(x - 2.5 * s, y - 1.5 * s, x - 4 * s, y);
+  ctx.moveTo(x, y - 3.5 * s);
+  ctx.quadraticCurveTo(x + 2.5 * s, y - 1.5 * s, x + 4 * s, y);
+  ctx.stroke();
 }
 
 function drawLevel4Player() {
