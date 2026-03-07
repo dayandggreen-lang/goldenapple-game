@@ -6,6 +6,7 @@
  * Level 1: Catch fruits in a dreamy garden
  * Level 2: Guide a cute cat through a magical garden
  * Level 3: Dreamy endless runner survival
+ * Level 4: Cozy Garden Adventure (find cat, yarn puzzle, memory puzzle)
  */
 
 // ===========================================
@@ -225,6 +226,26 @@ const THEME = {
     cloudColor: '#FFFFFF',
   },
 
+  // Level 4 - Cozy Garden Adventure
+  level4: {
+    skyTop: '#F4E8F0',
+    skyBottom: '#E8F0E8',
+    grass: '#B8D4A8',
+    grassHighlight: '#C8E4B8',
+    bushGreen: '#98B898',
+    bushDark: '#88A888',
+    flowerPink: '#F4C8D4',
+    flowerYellow: '#F8E8B8',
+    flowerWhite: '#FFF8F0',
+    benchWood: '#D4B898',
+    benchShadow: '#C4A888',
+    rockGray: '#C8C0B8',
+    fenceColor: '#D4C4B4',
+    yarnColor: '#F8E8E8',
+    yarnHighlight: '#FFFFFF',
+    particleColor: 'rgba(255, 248, 240, 0.8)',
+  },
+
   // UI - Soft and rounded
   ui: {
     overlayColor: 'rgba(40, 35, 35, 0.65)',
@@ -433,6 +454,28 @@ let level3 = {
   isMovingLane: false,
   targetLane: 1,
   laneProgress: 0,
+};
+
+// Level 4 state - Cozy Garden Adventure
+let level4 = {
+  part: 1, // 1: find cat, 2: yarn puzzle, 3: memory puzzle
+  playerX: 0,
+  playerY: 0,
+  bushes: [],       // { x, y, hasCat, shakeTime, butterfliesFled }
+  catFound: false,
+  catRunProgress: 0,
+  catX: 0,
+  catY: 0,
+  heartTime: 0,
+  yarn: { x: 0, y: 0, vx: 0, vy: 0, visible: false, radius: 18, reachedCat: false },
+  part2Obstacles: [], // { x, y, w, h, type }
+  catWaitingX: 0,
+  catWaitingY: 0,
+  puzzle: [],       // 3x3, 0-8, 8 = empty
+  puzzleSolved: false,
+  completionBloomTime: 0,
+  completionMessageTime: 0,
+  level4Particles: [],
 };
 
 // ===========================================
@@ -913,6 +956,14 @@ const player = {
       ctx.beginPath();
       ctx.arc(imgCx, imgCy, radius, 0, Math.PI * 2);
       ctx.stroke();
+      const isBlinking = ambientState.playerBlink?.isBlinking || false;
+      if (isBlinking) {
+        ctx.fillStyle = 'rgba(80, 60, 50, 0.55)';
+        ctx.beginPath();
+        ctx.arc(imgCx - 6, imgCy - 2, 4, 0, Math.PI * 2);
+        ctx.arc(imgCx + 6, imgCy - 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       this.drawFallback(drawY);
     }
@@ -2131,7 +2182,7 @@ function updateLevel3(deltaTime) {
   level3.distance += cfg.obstacleSpeed * deltaTime * 0.001;
 
   if (level3.timeRemaining <= 0) {
-    gameState = 'finalWin';
+    gameState = 'level4Intro';
     return;
   }
 
@@ -2331,7 +2382,14 @@ function drawLevel3() {
     ctx.beginPath();
     ctx.arc(px, imgCy, radius, 0, Math.PI * 2);
     ctx.stroke();
-    
+    const isBlinking = ambientState.playerBlink?.isBlinking || false;
+    if (isBlinking) {
+      ctx.fillStyle = 'rgba(80, 60, 50, 0.55)';
+      ctx.beginPath();
+      ctx.arc(px - 6, imgCy - 2, 4, 0, Math.PI * 2);
+      ctx.arc(px + 6, imgCy - 2, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
     // Cute feet/legs animation below the circle
     ctx.fillStyle = '#E8D4C8';
     ctx.beginPath();
@@ -2437,6 +2495,608 @@ function moveLevel3Player(direction) {
     level3.isMovingLane = true;
     level3.targetLane = newLane;
     level3.laneProgress = 0;
+  }
+}
+
+// ===========================================
+// LEVEL 4: COZY GARDEN ADVENTURE
+// ===========================================
+function initLevel4() {
+  const cw = canvas.width;
+  const ch = canvas.height;
+  level4.part = 1;
+  level4.playerX = cw / 2 - 25;
+  level4.playerY = ch - 120;
+  level4.catFound = false;
+  level4.catRunProgress = 0;
+  level4.heartTime = 0;
+  level4.yarn.visible = false;
+  level4.yarn.reachedCat = false;
+  level4.yarn.vx = 0;
+  level4.yarn.vy = 0;
+  level4.puzzleSolved = false;
+  level4.completionBloomTime = 0;
+  level4.completionMessageTime = 0;
+
+  // Bushes: 5 bushes, one has the cat
+  const bushPositions = [
+    { x: cw * 0.2, y: ch - 180 },
+    { x: cw * 0.4, y: ch - 200 },
+    { x: cw * 0.6, y: ch - 190 },
+    { x: cw * 0.75, y: ch - 170 },
+    { x: cw * 0.35, y: ch - 250 },
+  ];
+  const catBushIndex = Math.floor(Math.random() * bushPositions.length);
+  level4.bushes = bushPositions.map((p, i) => ({
+    x: p.x,
+    y: p.y,
+    hasCat: i === catBushIndex,
+    shakeTime: 0,
+    butterfliesFled: false,
+  }));
+
+  // Part 2 obstacles (rocks, pots, small fences)
+  level4.part2Obstacles = [
+    { x: cw * 0.25, y: ch - 220, w: 28, h: 22, type: 'rock' },
+    { x: cw * 0.55, y: ch - 260, w: 24, h: 20, type: 'rock' },
+    { x: cw * 0.7, y: ch - 200, w: 32, h: 36, type: 'pot' },
+    { x: cw * 0.4, y: ch - 300, w: 60, h: 18, type: 'fence' },
+  ];
+  level4.catWaitingX = cw * 0.82;
+  level4.catWaitingY = ch - 280;
+
+  // 3x3 sliding puzzle: tiles 0-7, empty = 8. Solved = [0,1,2,3,4,5,6,7,8]
+  const solved = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+  level4.puzzle = [...solved];
+  for (let i = 0; i < 25; i++) {
+    const emptyIdx = level4.puzzle.indexOf(8);
+    const row = Math.floor(emptyIdx / 3);
+    const col = emptyIdx % 3;
+    const moves = [];
+    if (row > 0) moves.push(emptyIdx - 3);
+    if (row < 2) moves.push(emptyIdx + 3);
+    if (col > 0) moves.push(emptyIdx - 1);
+    if (col < 2) moves.push(emptyIdx + 1);
+    const swapIdx = moves[Math.floor(Math.random() * moves.length)];
+    [level4.puzzle[emptyIdx], level4.puzzle[swapIdx]] = [level4.puzzle[swapIdx], level4.puzzle[emptyIdx]];
+  }
+
+  // Floating particles for level 4
+  level4.level4Particles = [];
+  for (let i = 0; i < 15; i++) {
+    level4.level4Particles.push({
+      x: Math.random() * cw,
+      y: Math.random() * ch,
+      size: 2 + Math.random() * 2,
+      alpha: 0.3 + Math.random() * 0.4,
+      speedY: -0.15 - Math.random() * 0.2,
+      speedX: (Math.random() - 0.5) * 0.1,
+    });
+  }
+}
+
+function updateLevel4(deltaTime) {
+  const dt = deltaTime / 1000;
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  // Update bush shake
+  level4.bushes.forEach(b => {
+    if (b.shakeTime > 0) {
+      b.shakeTime -= deltaTime;
+      if (b.shakeTime < 0) b.shakeTime = 0;
+    }
+  });
+
+  if (level4.part === 1) {
+    if (level4.catFound) {
+      level4.catRunProgress += dt * 0.8;
+      level4.heartTime += deltaTime;
+      if (level4.catRunProgress >= 1) {
+        level4.part = 2;
+        level4.yarn.x = level4.catX + 15;
+        level4.yarn.y = level4.catY + 10;
+        level4.yarn.visible = true;
+        level4.yarn.vx = 0;
+        level4.yarn.vy = 0;
+        level4.playerX = cw * 0.2;
+        level4.playerY = ch - 120;
+      }
+    }
+    return;
+  }
+
+  if (level4.part === 2) {
+    // Yarn physics: simple friction
+    if (level4.yarn.visible && !level4.yarn.reachedCat) {
+      level4.yarn.x += level4.yarn.vx * dt * 60;
+      level4.yarn.y += level4.yarn.vy * dt * 60;
+      level4.yarn.vx *= 0.92;
+      level4.yarn.vy *= 0.92;
+      if (Math.abs(level4.yarn.vx) < 0.5) level4.yarn.vx = 0;
+      if (Math.abs(level4.yarn.vy) < 0.5) level4.yarn.vy = 0;
+      // Bounds
+      const r = level4.yarn.radius;
+      if (level4.yarn.x < r) { level4.yarn.x = r; level4.yarn.vx = 0; }
+      if (level4.yarn.x > cw - r) { level4.yarn.x = cw - r; level4.yarn.vx = 0; }
+      if (level4.yarn.y < r) { level4.yarn.y = r; level4.yarn.vy = 0; }
+      if (level4.yarn.y > ch - r) { level4.yarn.y = ch - r; level4.yarn.vy = 0; }
+      // Obstacle collision (simple box)
+      level4.part2Obstacles.forEach(obs => {
+        const cx = level4.yarn.x;
+        const cy = level4.yarn.y;
+        const ox = obs.x + obs.w / 2;
+        const oy = obs.y + obs.h / 2;
+        const dx = cx - ox;
+        const dy = cy - oy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = r + Math.max(obs.w, obs.h) / 2;
+        if (dist < minDist && dist > 0) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const pen = minDist - dist;
+          level4.yarn.x += nx * pen;
+          level4.yarn.y += ny * pen;
+          const vn = level4.yarn.vx * nx + level4.yarn.vy * ny;
+          if (vn < 0) {
+            level4.yarn.vx -= 1.2 * vn * nx;
+            level4.yarn.vy -= 1.2 * vn * ny;
+          }
+        }
+      });
+      // Reach cat?
+      const dx = level4.yarn.x - level4.catWaitingX;
+      const dy = level4.yarn.y - level4.catWaitingY;
+      if (dx * dx + dy * dy < 40 * 40) {
+        level4.yarn.reachedCat = true;
+        level4.yarn.visible = false;
+        level4.part = 3;
+      }
+    }
+    return;
+  }
+
+  if (level4.part === 3) {
+    if (level4.puzzleSolved) {
+      level4.completionBloomTime += deltaTime;
+      if (level4.completionBloomTime > 500) level4.completionMessageTime += deltaTime;
+      if (level4.completionMessageTime > 2500) {
+        gameState = 'finalWin';
+      }
+    }
+  }
+
+  // Level 4 particles
+  level4.level4Particles.forEach(p => {
+    p.x += p.speedX;
+    p.y += p.speedY;
+    if (p.y < -5) { p.y = ch + 5; p.x = Math.random() * cw; }
+  });
+}
+
+function drawLevel4Background() {
+  const t = THEME.level4;
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, ch);
+  grad.addColorStop(0, t.skyTop);
+  grad.addColorStop(0.6, t.skyBottom);
+  grad.addColorStop(1, t.grass);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Swaying grass strip
+  ctx.fillStyle = t.grass;
+  ctx.beginPath();
+  ctx.moveTo(0, ch - 30);
+  for (let x = 0; x <= cw + 20; x += 18) {
+    const wave = Math.sin(x * 0.04 + globalTime * 0.002) * 4;
+    ctx.lineTo(x, ch - 30 + wave);
+  }
+  ctx.lineTo(cw + 20, ch);
+  ctx.lineTo(0, ch);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = t.grassHighlight;
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, ch - 25);
+  for (let x = 0; x <= cw + 20; x += 15) {
+    const wave = Math.sin(x * 0.05 + globalTime * 0.003 + 1) * 3;
+    ctx.lineTo(x, ch - 23 + wave);
+  }
+  ctx.lineTo(cw + 20, ch);
+  ctx.lineTo(0, ch);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Small trees (simple circles)
+  ctx.fillStyle = t.bushDark;
+  ctx.beginPath();
+  ctx.arc(cw * 0.1, ch - 80, 35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = t.bushGreen;
+  ctx.beginPath();
+  ctx.arc(cw * 0.88, ch - 100, 40, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bench
+  ctx.fillStyle = t.benchShadow;
+  ctx.fillRect(cw * 0.72, ch - 95, 55, 12);
+  ctx.fillStyle = t.benchWood;
+  ctx.fillRect(cw * 0.72, ch - 105, 50, 18);
+  ctx.fillRect(cw * 0.7, ch - 115, 8, 35);
+  ctx.fillRect(cw * 0.72 + 42, ch - 115, 8, 35);
+
+  // Flowers
+  [t.flowerPink, t.flowerYellow, t.flowerWhite].forEach((color, i) => {
+    ctx.fillStyle = color;
+    const fx = 40 + i * 45;
+    const fy = ch - 35 + Math.sin(globalTime * 0.002 + i) * 3;
+    for (let p = 0; p < 5; p++) {
+      const a = (p * Math.PI * 2) / 5 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(fx + Math.cos(a) * 6, fy + Math.sin(a) * 6, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#F8D888';
+    ctx.beginPath();
+    ctx.arc(fx, fy, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Butterflies
+  for (let i = 0; i < 3; i++) {
+    const bx = (cw * 0.3 + i * 0.2 + Math.sin(globalTime * 0.002 + i * 2) * 30) % (cw + 20) - 10;
+    const by = 120 + i * 80 + Math.cos(globalTime * 0.003 + i) * 20;
+    const wing = Math.sin(globalTime * 0.02 + i) * 0.3;
+    ctx.fillStyle = ['#F4C8D4', '#F8E8B8', '#D4E8F4'][i];
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.beginPath();
+    ctx.ellipse(-4, 0, 5 + wing * 3, 3, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(4, 0, 5 + wing * 3, 3, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Floating particles
+  level4.level4Particles.forEach(p => {
+    ctx.fillStyle = `rgba(255, 248, 240, ${p.alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawLevel4Bush(x, y, hasCat, shakeTime) {
+  const t = THEME.level4;
+  const shake = shakeTime > 0 ? (Math.random() - 0.5) * 8 : 0;
+  ctx.save();
+  ctx.translate(x + shake, y);
+  ctx.fillStyle = t.bushDark;
+  ctx.beginPath();
+  ctx.arc(0, 25, 35, 0, Math.PI * 2);
+  ctx.arc(-22, 15, 28, 0, Math.PI * 2);
+  ctx.arc(22, 18, 28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = t.bushGreen;
+  ctx.beginPath();
+  ctx.arc(0, 20, 32, 0, Math.PI * 2);
+  ctx.arc(-20, 12, 25, 0, Math.PI * 2);
+  ctx.arc(20, 14, 25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawLevel4Cat(x, y, scale) {
+  const catImg = getImage('cat');
+  if (catImg) {
+    const w = 50 * (scale || 1);
+    const h = 45 * (scale || 1);
+    ctx.drawImage(catImg, x - w / 2, y - h / 2, w, h);
+    return;
+  }
+  const t = THEME.level2;
+  ctx.fillStyle = t.catBody;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 5, 18 * (scale || 1), 22 * (scale || 1), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = t.catBelly;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 12, 10 * (scale || 1), 12 * (scale || 1), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = t.catEyes;
+  ctx.beginPath();
+  ctx.arc(x - 6, y - 5, 4, 0, Math.PI * 2);
+  ctx.arc(x + 6, y - 5, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawLevel4Player() {
+  const px = level4.playerX;
+  const py = level4.playerY;
+  const breathOffset = ambientState.playerBreath || 0;
+  const bob = Math.sin(globalTime * 0.004) * 2;
+  const drawY = py + bob + breathOffset;
+
+  ctx.fillStyle = 'rgba(168, 152, 136, 0.2)';
+  ctx.beginPath();
+  ctx.ellipse(px + 27, py + 60, 22, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const img = getImage('player');
+  if (img) {
+    const imgCx = px + 27;
+    const imgCy = drawY + 32;
+    const radius = 26;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(imgCx, imgCy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(img, imgCx - radius * 1.2, imgCy - radius * 1.2, radius * 2.4, radius * 2.4);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(220, 180, 190, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(imgCx, imgCy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    const isBlinking = ambientState.playerBlink?.isBlinking || false;
+    if (isBlinking) {
+      ctx.fillStyle = 'rgba(80, 60, 50, 0.6)';
+      ctx.beginPath();
+      ctx.arc(imgCx - 8, imgCy - 2, 4, 0, Math.PI * 2);
+      ctx.arc(imgCx + 8, imgCy - 2, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    const t = THEME.level1;
+    const cx = px + 27;
+    ctx.fillStyle = t.playerBody;
+    ctx.beginPath();
+    ctx.ellipse(cx, drawY + 48, 22, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = t.playerSkin;
+    ctx.beginPath();
+    ctx.arc(cx, drawY + 18, 16, 0, Math.PI * 2);
+    ctx.fill();
+    const isBlinking = ambientState.playerBlink?.isBlinking || false;
+    if (isBlinking) {
+      ctx.strokeStyle = t.playerDetail;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx - 5, drawY + 16, 3, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.arc(cx + 5, drawY + 16, 3, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = t.playerDetail;
+      ctx.beginPath();
+      ctx.arc(cx - 5, drawY + 16, 2.5, 0, Math.PI * 2);
+      ctx.arc(cx + 5, drawY + 16, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawLevel4() {
+  drawLevel4Background();
+
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const t = THEME.level4;
+
+  // Part 1: garden + bushes + find cat
+  if (level4.part === 1) {
+    level4.bushes.forEach(b => {
+      drawLevel4Bush(b.x, b.y, b.hasCat, b.shakeTime);
+    });
+    if (level4.catFound) {
+      const runT = level4.catRunProgress;
+      level4.catX = level4.bushes.find(x => x.hasCat).x + (cw * 0.85 - level4.bushes.find(x => x.hasCat).x) * runT;
+      level4.catY = level4.bushes.find(x => x.hasCat).y + (ch - 200 - level4.bushes.find(x => x.hasCat).y) * runT;
+      drawLevel4Cat(level4.catX, level4.catY, 1);
+      if (level4.heartTime < 800) {
+        const heartY = level4.bushes.find(x => x.hasCat).y - 30 - (level4.heartTime / 800) * 20;
+        ctx.fillStyle = '#E8A8A8';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('♥', level4.catX - 12, heartY);
+      }
+    }
+    drawLevel4Player();
+    ctx.fillStyle = THEME.ui.textSecondary;
+    ctx.font = `500 14px ${THEME.fonts.primary}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Tap bushes to find the cat!', cw / 2, 32);
+    return;
+  }
+
+  // Part 2: yarn puzzle
+  if (level4.part === 2) {
+    level4.part2Obstacles.forEach(obs => {
+      if (obs.type === 'rock') {
+        ctx.fillStyle = t.rockGray;
+        ctx.beginPath();
+        ctx.arc(obs.x + obs.w / 2, obs.y + obs.h / 2, obs.w / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (obs.type === 'pot') {
+        ctx.fillStyle = t.flowerPink;
+        ctx.beginPath();
+        ctx.ellipse(obs.x + obs.w / 2, obs.y + obs.h - 8, obs.w * 0.4, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#D4B898';
+        ctx.fillRect(obs.x + 4, obs.y, obs.w - 8, obs.h - 8);
+      } else {
+        ctx.fillStyle = t.fenceColor;
+        ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+      }
+    });
+    if (level4.yarn.visible) {
+      ctx.fillStyle = t.yarnHighlight;
+      ctx.beginPath();
+      ctx.arc(level4.yarn.x, level4.yarn.y, level4.yarn.radius + 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = t.yarnColor;
+      ctx.beginPath();
+      ctx.arc(level4.yarn.x, level4.yarn.y, level4.yarn.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    drawLevel4Cat(level4.catWaitingX, level4.catWaitingY, 1);
+    drawLevel4Player();
+    ctx.fillStyle = THEME.ui.textSecondary;
+    ctx.font = `500 14px ${THEME.fonts.primary}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Push the yarn ball to the cat!', cw / 2, 32);
+    return;
+  }
+
+  // Part 3: memory puzzle
+  if (level4.part === 3) {
+    drawLevel4Cat(level4.catWaitingX, level4.catWaitingY, 1);
+
+    if (!level4.puzzleSolved) {
+      const puzzleW = 180;
+      const puzzleH = 180;
+      const pad = 8;
+      const cellSize = (puzzleW - pad * 4) / 3;
+      const px = cw / 2 - puzzleW / 2;
+      const py = ch / 2 - puzzleH / 2 - 20;
+      ctx.fillStyle = 'rgba(255, 252, 248, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(px - 10, py - 10, puzzleW + 20, puzzleH + 20, 12);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(200, 184, 184, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      for (let i = 0; i < 9; i++) {
+        const val = level4.puzzle[i];
+        if (val === 8) continue;
+        const row = Math.floor(i / 3);
+        const col = i % 3;
+        const cx = px + pad + col * (cellSize + pad) + cellSize / 2;
+        const cy = py + pad + row * (cellSize + pad) + cellSize / 2;
+        const tilePx = cx - cellSize / 2;
+        const tilePy = cy - cellSize / 2;
+        ctx.fillStyle = ['#E8D4E8', '#D4E8E8', '#E8E8D4', '#E8E0D8', '#D8E8E0', '#F0E8E0', '#E0E8E8', '#E8E0E0'][val];
+        ctx.beginPath();
+        ctx.roundRect(tilePx, tilePy, cellSize, cellSize, 6);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(180, 160, 160, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = THEME.ui.textPrimary;
+        ctx.font = `600 ${cellSize * 0.5}px ${THEME.fonts.primary}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(val + 1), cx, cy);
+        ctx.textBaseline = 'alphabetic';
+      }
+      ctx.fillStyle = THEME.ui.textSecondary;
+      ctx.font = `500 14px ${THEME.fonts.primary}`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Slide tiles to solve the puzzle!', cw / 2, 32);
+    } else {
+      // Solved: flowers bloom, butterflies, message
+      const bloomT = Math.min(1, level4.completionBloomTime / 600);
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2 + globalTime * 0.001;
+        const dist = 80 + bloomT * 40 + Math.sin(globalTime * 0.003 + i) * 10;
+        const fx = cw / 2 + Math.cos(angle) * dist;
+        const fy = ch / 2 - 20 + Math.sin(angle) * dist * 0.6;
+        ctx.fillStyle = [t.flowerPink, t.flowerYellow, t.flowerWhite][i % 3];
+        for (let p = 0; p < 5; p++) {
+          const a = (p * Math.PI * 2) / 5 - Math.PI / 2 + bloomT * 0.5;
+          ctx.beginPath();
+          ctx.arc(fx + Math.cos(a) * 8, fy + Math.sin(a) * 8, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#F8D888';
+        ctx.beginPath();
+        ctx.arc(fx, fy, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (level4.completionMessageTime > 200) {
+        ctx.fillStyle = 'rgba(40, 35, 35, 0.7)';
+        ctx.fillRect(0, 0, cw, ch);
+        const t2 = THEME.ui;
+        ctx.fillStyle = t2.textGold;
+        ctx.font = `600 24px ${THEME.fonts.primary}`;
+        ctx.textAlign = 'center';
+        ctx.fillText('Cozy Garden Complete!', cw / 2, ch / 2 - 20);
+        ctx.fillStyle = t2.textPrimary;
+        ctx.font = `500 14px ${THEME.fonts.primary}`;
+        ctx.fillText('The cat is happy. What a lovely memory.', cw / 2, ch / 2 + 15);
+        ctx.fillStyle = t2.textSecondary;
+        ctx.font = `500 12px ${THEME.fonts.primary}`;
+        ctx.fillText('(Continuing...)', cw / 2, ch / 2 + 55);
+      }
+    }
+    drawLevel4Player();
+    return;
+  }
+}
+
+function handleLevel4Click(x, y) {
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  if (level4.part === 1) {
+    level4.bushes.forEach(b => {
+      const dx = x - b.x;
+      const dy = y - (b.y + 20);
+      if (dx * dx + dy * dy < 45 * 45) {
+        b.shakeTime = 400;
+        b.butterfliesFled = true;
+        if (b.hasCat) {
+          level4.catFound = true;
+          level4.catX = b.x;
+          level4.catY = b.y;
+        }
+      }
+    });
+    return;
+  }
+
+  if (level4.part === 2 && level4.yarn.visible) {
+    const dx = x - level4.yarn.x;
+    const dy = y - level4.yarn.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 80) {
+      const strength = Math.min(2, 60 / (dist + 1));
+      level4.yarn.vx += (dx / dist) * strength;
+      level4.yarn.vy += (dy / dist) * strength;
+    }
+    return;
+  }
+
+  if (level4.part === 3 && !level4.puzzleSolved) {
+    const puzzleW = 180;
+    const puzzleH = 180;
+    const pad = 8;
+    const cellSize = (puzzleW - pad * 4) / 3;
+    const px = cw / 2 - puzzleW / 2;
+    const py = ch / 2 - puzzleH / 2 - 20;
+    const emptyIdx = level4.puzzle.indexOf(8);
+    const emptyRow = Math.floor(emptyIdx / 3);
+    const emptyCol = emptyIdx % 3;
+    for (let i = 0; i < 9; i++) {
+      const row = Math.floor(i / 3);
+      const col = i % 3;
+      const tilePx = px + pad + col * (cellSize + pad);
+      const tilePy = py + pad + row * (cellSize + pad);
+      if (x >= tilePx && x <= tilePx + cellSize && y >= tilePy && y <= tilePy + cellSize) {
+        const adjacent = (Math.abs(row - emptyRow) === 1 && col === emptyCol) || (Math.abs(col - emptyCol) === 1 && row === emptyRow);
+        if (adjacent) {
+          const temp = level4.puzzle[i];
+          level4.puzzle[emptyIdx] = temp;
+          level4.puzzle[i] = 8;
+          const solved = level4.puzzle.every((v, idx) => v === idx);
+          if (solved) level4.puzzleSolved = true;
+        }
+        break;
+      }
+    }
   }
 }
 
@@ -2653,6 +3313,32 @@ function drawLevel3IntroScreen() {
   drawButton(canvas.width / 2, panelY + 195, 'START', t.buttonSuccess);
 }
 
+function drawLevel4IntroScreen() {
+  const t = THEME.ui;
+  drawSoftOverlay();
+
+  const panelW = 280;
+  const panelH = 240;
+  const panelX = canvas.width / 2 - panelW / 2;
+  const panelY = canvas.height / 2 - panelH / 2;
+  
+  drawPanel(panelX, panelY, panelW, panelH);
+
+  ctx.font = `600 20px ${THEME.fonts.primary}`;
+  ctx.fillStyle = t.textPrimary;
+  ctx.textAlign = 'center';
+  ctx.fillText('Level 4: Cozy Garden Adventure', canvas.width / 2, panelY + 45);
+
+  ctx.font = `500 13px ${THEME.fonts.primary}`;
+  ctx.fillStyle = t.textSecondary;
+  ctx.fillText('Find the cat in the garden...', canvas.width / 2, panelY + 85);
+  ctx.fillText('Then help with a yarn ball', canvas.width / 2, panelY + 110);
+  ctx.fillText('and a little memory puzzle.', canvas.width / 2, panelY + 135);
+  ctx.fillText('Take your time — cozy and slow.', canvas.width / 2, panelY + 160);
+
+  drawButton(canvas.width / 2, panelY + 205, 'ENTER GARDEN', t.buttonSuccess);
+}
+
 function drawLevel2HitScreen() {
   const t = THEME.ui;
   drawSoftOverlay();
@@ -2758,7 +3444,7 @@ function drawFinalWinScreen() {
   drawSoftOverlay();
 
   const panelW = 280;
-  const panelH = 260;
+  const panelH = 280;
   const panelX = canvas.width / 2 - panelW / 2;
   const panelY = canvas.height / 2 - panelH / 2;
   
@@ -2779,14 +3465,15 @@ function drawFinalWinScreen() {
   ctx.font = `500 16px ${THEME.fonts.primary}`;
   ctx.fillStyle = t.textPrimary;
   ctx.fillText('You completed all levels!', canvas.width / 2, panelY + 95);
+  ctx.fillText('Including the Cozy Garden!', canvas.width / 2, panelY + 115);
 
   ctx.font = `500 13px ${THEME.fonts.primary}`;
   ctx.fillStyle = t.textSecondary;
-  ctx.fillText(`Fruits: ${score}`, canvas.width / 2, panelY + 130);
-  ctx.fillText(`Garden attempts: ${level2Attempts}`, canvas.width / 2, panelY + 150);
-  ctx.fillText(`Stars collected: ${level3.score}`, canvas.width / 2, panelY + 170);
+  ctx.fillText(`Fruits: ${score}`, canvas.width / 2, panelY + 145);
+  ctx.fillText(`Garden attempts: ${level2Attempts}`, canvas.width / 2, panelY + 165);
+  ctx.fillText(`Stars collected: ${level3.score}`, canvas.width / 2, panelY + 185);
 
-  drawButton(canvas.width / 2, panelY + 220, 'PLAY AGAIN', t.buttonSuccess);
+  drawButton(canvas.width / 2, panelY + 235, 'PLAY AGAIN', t.buttonSuccess);
 }
 
 function drawButton(x, y, text, color) {
@@ -2871,6 +3558,12 @@ function startLevel3() {
   currentLevel = 3;
   resetLevel3();
   gameState = 'level3';
+}
+
+function startLevel4() {
+  currentLevel = 4;
+  initLevel4();
+  gameState = 'level4';
 }
 
 // ===========================================
@@ -2961,6 +3654,7 @@ function handleButtonClick() {
     case 'level2GameOver': resetLevel2(); gameState = 'level2'; break;
     case 'level3Intro': startLevel3(); break;
     case 'level3GameOver': startLevel3(); break;
+    case 'level4Intro': startLevel4(); break;
     case 'lose': startGame(); break;
     case 'finalWin': startGame(); break;
   }
@@ -2968,6 +3662,16 @@ function handleButtonClick() {
 
 // Canvas click handling
 canvas.addEventListener('click', (e) => {
+  if (gameState === 'level4') {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    handleLevel4Click(x, y);
+    return;
+  }
+
   if (gameState === 'playing' || gameState === 'level2' || gameState === 'level3') return;
 
   const rect = canvas.getBoundingClientRect();
@@ -2982,6 +3686,7 @@ canvas.addEventListener('click', (e) => {
     case 'level1Win': btnY = canvas.height / 2 + 65; break;
     case 'level2Intro': btnY = canvas.height / 2 + 80; break;
     case 'level3Intro': btnY = canvas.height / 2 + 75; break;
+    case 'level4Intro': btnY = canvas.height / 2 + 80; break;
     case 'level2Hit': btnY = canvas.height / 2 + 55; break;
     case 'level2GameOver': btnY = canvas.height / 2 + 55; break;
     case 'level3GameOver': btnY = canvas.height / 2 + 55; break;
@@ -2993,6 +3698,17 @@ canvas.addEventListener('click', (e) => {
 });
 
 canvas.addEventListener('touchend', (e) => {
+  if (gameState === 'level4') {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.changedTouches[0];
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+    handleLevel4Click(x, y);
+    return;
+  }
   if (gameState === 'playing' || gameState === 'level2' || gameState === 'level3') return;
   e.preventDefault();
 
@@ -3009,6 +3725,7 @@ canvas.addEventListener('touchend', (e) => {
     case 'level1Win': btnY = canvas.height / 2 + 65; break;
     case 'level2Intro': btnY = canvas.height / 2 + 80; break;
     case 'level3Intro': btnY = canvas.height / 2 + 75; break;
+    case 'level4Intro': btnY = canvas.height / 2 + 80; break;
     case 'level2Hit': btnY = canvas.height / 2 + 55; break;
     case 'level2GameOver': btnY = canvas.height / 2 + 55; break;
     case 'level3GameOver': btnY = canvas.height / 2 + 55; break;
@@ -3136,6 +3853,16 @@ function gameLoop(timestamp) {
     
     // Draw foreground ambient for level 3
     drawAmbientLayer(3);
+
+  } else if (gameState === 'level4') {
+    updateLevel4(deltaTime);
+    drawLevel4();
+    drawAmbientLayer(3);
+
+  } else if (gameState === 'level4Intro') {
+    drawLevel4Background();
+    drawAmbientLayer(3);
+    drawLevel4IntroScreen();
 
   } else if (gameState === 'start') {
     drawLevel1Background();
