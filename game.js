@@ -102,6 +102,37 @@ const AMBIENT = {
 };
 
 // ===========================================
+// CHARACTER ANIMATION SYSTEM
+// ===========================================
+const CHARACTER_ANIM = {
+  // Expressions
+  expressions: {
+    neutral: { eyeScale: 1, mouthCurve: 0, blushAlpha: 0.3 },
+    happy: { eyeScale: 0.8, mouthCurve: 0.5, blushAlpha: 0.6 },
+    surprised: { eyeScale: 1.3, mouthCurve: -0.2, blushAlpha: 0.2 },
+    thinking: { eyeScale: 0.9, mouthCurve: 0.1, blushAlpha: 0.3 },
+  },
+  
+  // Movement
+  walkBounce: 3,
+  walkSpeed: 0.02,
+  legSwing: 8,
+  
+  // Idle
+  idleSway: 1.5,
+  idleSwaySpeed: 0.001,
+};
+
+// Character state
+let characterState = {
+  expression: 'neutral',
+  isWalking: false,
+  walkPhase: 0,
+  blinkTimer: 0,
+  isBlinking: false,
+};
+
+// ===========================================
 // COZY PASTEL THEME - Soft, feminine, dreamy
 // ===========================================
 const THEME = {
@@ -224,6 +255,43 @@ const THEME = {
     treeLine: '#B8C8B8',            // Distant trees
     cloudColor: '#FFFFFF',
   },
+  
+  // Level 4 - Cozy Garden Adventure
+  level4: {
+    bgTop: '#E8F0E8',               // Soft mint sky
+    bgMid: '#F4E8E4',               // Warm cream
+    bgBottom: '#C8DCC8',            // Garden green
+    
+    grassLight: '#B8D8B8',          // Light sage
+    grassDark: '#98C898',           // Deeper sage
+    
+    bushColor: '#88B898',           // Bush green
+    bushHighlight: '#A8C8A8',       // Bush highlight
+    bushShadow: '#78A888',          // Bush shadow
+    
+    flowerPink: '#F4C8D4',
+    flowerYellow: '#F8E8B8',
+    flowerWhite: '#FFF8F0',
+    
+    benchColor: '#D8C8B8',          // Warm wood
+    benchShadow: '#C8B8A8',
+    
+    pathColor: '#E8DCD0',           // Soft stone path
+    pathShadow: '#D8CCC0',
+    
+    yarnColor: '#F4B8C8',           // Soft pink yarn
+    yarnHighlight: '#FCD8E8',
+    
+    rockColor: '#C8C0B8',           // Soft gray rock
+    rockShadow: '#B8B0A8',
+    
+    fenceColor: '#D8C8B8',          // Wooden fence
+    fenceShadow: '#C8B8A8',
+    
+    puzzleBg: '#F8F4F0',            // Puzzle background
+    puzzleBorder: '#D8CCC0',
+    puzzleHighlight: '#FFF8F4',
+  },
 
   // UI - Soft and rounded
   ui: {
@@ -303,6 +371,15 @@ const GAMEPLAY = {
     obstacleSpawnRate: 1200,
     collectibleSpawnRate: 2000,
     lives: 2,
+  },
+
+  level4: {
+    bushCount: 6,
+    correctBushIndex: null,  // Randomized at start
+    yarnMazeWidth: 7,
+    yarnMazeHeight: 5,
+    playerMoveSpeed: 150,
+    puzzleSize: 3,           // 3x3 sliding puzzle
   },
 
   sizes: {
@@ -433,6 +510,49 @@ let level3 = {
   isMovingLane: false,
   targetLane: 1,
   laneProgress: 0,
+};
+
+// Level 4 state - Cozy Garden Adventure
+let level4 = {
+  phase: 'findCat',  // 'findCat', 'yarnPuzzle', 'memoryPuzzle', 'complete'
+  
+  // Part 1: Find the Cat
+  playerX: 200,
+  playerY: 450,
+  targetX: 200,
+  targetY: 450,
+  bushes: [],
+  bushesChecked: [],
+  correctBushIndex: 0,
+  catFound: false,
+  catRunAway: false,
+  catX: 0,
+  catY: 0,
+  catTargetX: 0,
+  catTargetY: 0,
+  
+  // Part 2: Yarn Puzzle
+  yarnX: 0,
+  yarnY: 0,
+  yarnTargetX: 0,
+  yarnTargetY: 0,
+  mazeGrid: [],
+  mazePlayerX: 0,
+  mazePlayerY: 0,
+  yarnReachedGoal: false,
+  
+  // Part 3: Memory Puzzle (3x3 sliding)
+  puzzleTiles: [],
+  emptyTileIndex: 8,
+  puzzleSolved: false,
+  puzzleMoves: 0,
+  
+  // Animations
+  bushShakeTimer: 0,
+  shakingBushIndex: -1,
+  butterfliesFlying: [],
+  celebrationTimer: 0,
+  bloomingFlowers: [],
 };
 
 // ===========================================
@@ -2751,6 +2871,854 @@ function drawLoseScreen() {
   ctx.fillText(`Score: ${score}`, canvas.width / 2, panelY + 105);
 
   drawButton(canvas.width / 2, panelY + 145, 'TRY AGAIN', t.buttonDanger);
+}
+
+// ===========================================
+// LEVEL 4 - COZY GARDEN ADVENTURE
+// ===========================================
+
+function initLevel4() {
+  // Reset state
+  level4.phase = 'findCat';
+  level4.playerX = 200;
+  level4.playerY = 450;
+  level4.targetX = 200;
+  level4.targetY = 450;
+  level4.catFound = false;
+  level4.catRunAway = false;
+  level4.bushesChecked = [];
+  level4.shakingBushIndex = -1;
+  level4.butterfliesFlying = [];
+  level4.yarnReachedGoal = false;
+  level4.puzzleSolved = false;
+  level4.celebrationTimer = 0;
+  level4.bloomingFlowers = [];
+  
+  // Initialize bushes with positions
+  level4.bushes = [
+    { x: 60, y: 280, size: 50 },
+    { x: 160, y: 200, size: 45 },
+    { x: 280, y: 240, size: 55 },
+    { x: 350, y: 320, size: 48 },
+    { x: 100, y: 380, size: 52 },
+    { x: 300, y: 400, size: 46 },
+  ];
+  
+  // Randomly select which bush has the cat
+  level4.correctBushIndex = Math.floor(Math.random() * level4.bushes.length);
+  
+  // Initialize puzzle tiles (will be set up when entering puzzle phase)
+  level4.puzzleTiles = [];
+  level4.emptyTileIndex = 8;
+  level4.puzzleMoves = 0;
+}
+
+function initYarnMaze() {
+  // Simple maze grid (0 = path, 1 = obstacle)
+  level4.mazeGrid = [
+    [0, 0, 1, 0, 0, 0, 0],
+    [1, 0, 1, 0, 1, 1, 0],
+    [0, 0, 0, 0, 0, 1, 0],
+    [0, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 0, 0, 1, 0],
+  ];
+  
+  level4.mazePlayerX = 0;
+  level4.mazePlayerY = 0;
+  level4.yarnX = 0;
+  level4.yarnY = 0;
+  level4.yarnReachedGoal = false;
+}
+
+function initSlidingPuzzle() {
+  // Create shuffled 3x3 puzzle (0-7 are tiles, 8 is empty)
+  let tiles = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+  
+  // Shuffle with valid moves to ensure solvability
+  for (let i = 0; i < 100; i++) {
+    const emptyIdx = tiles.indexOf(8);
+    const validMoves = getValidPuzzleMoves(emptyIdx);
+    const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+    // Swap
+    tiles[emptyIdx] = tiles[randomMove];
+    tiles[randomMove] = 8;
+  }
+  
+  level4.puzzleTiles = tiles;
+  level4.emptyTileIndex = tiles.indexOf(8);
+  level4.puzzleMoves = 0;
+  level4.puzzleSolved = false;
+}
+
+function getValidPuzzleMoves(emptyIdx) {
+  const moves = [];
+  const row = Math.floor(emptyIdx / 3);
+  const col = emptyIdx % 3;
+  
+  if (row > 0) moves.push(emptyIdx - 3); // Up
+  if (row < 2) moves.push(emptyIdx + 3); // Down
+  if (col > 0) moves.push(emptyIdx - 1); // Left
+  if (col < 2) moves.push(emptyIdx + 1); // Right
+  
+  return moves;
+}
+
+function checkPuzzleSolved() {
+  for (let i = 0; i < 8; i++) {
+    if (level4.puzzleTiles[i] !== i) return false;
+  }
+  return true;
+}
+
+function startLevel4() {
+  gameState = 'level4';
+  initLevel4();
+}
+
+function updateLevel4(deltaTime) {
+  // Smooth player movement
+  const moveSpeed = 0.008 * deltaTime;
+  level4.playerX += (level4.targetX - level4.playerX) * moveSpeed;
+  level4.playerY += (level4.targetY - level4.playerY) * moveSpeed;
+  
+  // Update bush shake animation
+  if (level4.shakingBushIndex >= 0) {
+    level4.bushShakeTimer -= deltaTime;
+    if (level4.bushShakeTimer <= 0) {
+      level4.shakingBushIndex = -1;
+    }
+  }
+  
+  // Update flying butterflies
+  level4.butterfliesFlying = level4.butterfliesFlying.filter(bf => {
+    bf.y -= 1.5;
+    bf.x += Math.sin(globalTime * 0.01 + bf.phase) * 0.8;
+    return bf.y > -20;
+  });
+  
+  // Update celebration blooming flowers
+  if (level4.phase === 'complete') {
+    level4.celebrationTimer += deltaTime;
+    
+    // Add blooming flowers during celebration
+    if (level4.bloomingFlowers.length < 12 && Math.random() < 0.02) {
+      level4.bloomingFlowers.push({
+        x: Math.random() * canvas.width,
+        y: canvas.height - 50 + Math.random() * 30,
+        size: 0,
+        maxSize: 8 + Math.random() * 8,
+        color: ['#F4C8D4', '#F8E8B8', '#FFF8F0'][Math.floor(Math.random() * 3)],
+      });
+    }
+    
+    // Grow flowers
+    level4.bloomingFlowers.forEach(f => {
+      if (f.size < f.maxSize) {
+        f.size += 0.1;
+      }
+    });
+  }
+}
+
+function drawLevel4Background() {
+  const t = THEME.level4;
+  
+  // Sky gradient
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, t.bgTop);
+  gradient.addColorStop(0.5, t.bgMid);
+  gradient.addColorStop(1, t.bgBottom);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Ambient parallax clouds
+  drawAmbientLayer(0);
+  
+  // Draw soft grass ground
+  ctx.fillStyle = t.grassLight;
+  ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+  
+  // Grass texture
+  ctx.fillStyle = t.grassDark;
+  for (let x = 0; x < canvas.width; x += 15) {
+    const wave = Math.sin(x * 0.1 + globalTime * 0.001) * 3;
+    ctx.beginPath();
+    ctx.moveTo(x, canvas.height - 100);
+    ctx.lineTo(x + 8, canvas.height - 100 + wave);
+    ctx.lineTo(x + 15, canvas.height - 100);
+    ctx.fill();
+  }
+  
+  // Draw bench
+  drawBench(320, canvas.height - 130);
+  
+  // Draw some decorative trees in background
+  drawBackgroundTree(50, 150, 0.7);
+  drawBackgroundTree(350, 120, 0.6);
+}
+
+function drawBench(x, y) {
+  const t = THEME.level4;
+  
+  // Bench seat
+  ctx.fillStyle = t.benchColor;
+  ctx.fillRect(x - 40, y, 80, 8);
+  
+  // Bench legs
+  ctx.fillStyle = t.benchShadow;
+  ctx.fillRect(x - 35, y + 8, 6, 20);
+  ctx.fillRect(x + 29, y + 8, 6, 20);
+  
+  // Bench back
+  ctx.fillStyle = t.benchColor;
+  ctx.fillRect(x - 38, y - 25, 76, 6);
+  ctx.fillRect(x - 38, y - 15, 76, 6);
+  
+  // Back supports
+  ctx.fillStyle = t.benchShadow;
+  ctx.fillRect(x - 35, y - 25, 5, 25);
+  ctx.fillRect(x + 30, y - 25, 5, 25);
+}
+
+function drawBackgroundTree(x, y, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  
+  // Trunk
+  ctx.fillStyle = '#C8B8A8';
+  ctx.fillRect(-8, 0, 16, 60);
+  
+  // Foliage
+  ctx.fillStyle = '#A8C8A8';
+  ctx.beginPath();
+  ctx.arc(0, -20, 40, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#98B898';
+  ctx.beginPath();
+  ctx.arc(-15, -10, 30, 0, Math.PI * 2);
+  ctx.arc(15, -5, 28, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.restore();
+}
+
+function drawBush(bush, index, isShaking) {
+  const t = THEME.level4;
+  let x = bush.x;
+  const y = bush.y;
+  const size = bush.size;
+  
+  // Apply shake effect
+  if (isShaking) {
+    x += Math.sin(globalTime * 0.05) * 5;
+  }
+  
+  // Bush shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + size * 0.8, size * 0.8, size * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Main bush body
+  ctx.fillStyle = t.bushColor;
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Bush highlight
+  ctx.fillStyle = t.bushHighlight;
+  ctx.beginPath();
+  ctx.arc(x - size * 0.2, y - size * 0.2, size * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Additional bush puffs
+  ctx.fillStyle = t.bushColor;
+  ctx.beginPath();
+  ctx.arc(x - size * 0.5, y + size * 0.2, size * 0.5, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.5, y + size * 0.1, size * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Small flowers on bush
+  if (!level4.bushesChecked.includes(index)) {
+    ctx.fillStyle = t.flowerPink;
+    ctx.beginPath();
+    ctx.arc(x - size * 0.3, y - size * 0.5, 4, 0, Math.PI * 2);
+    ctx.arc(x + size * 0.4, y - size * 0.3, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawLevel4Player(x, y) {
+  const img = getImage('player');
+  const breathOffset = ambientState.playerBreath || 0;
+  const drawY = y + breathOffset;
+  
+  // Soft glow
+  drawPlayerGlow(x, drawY, 40);
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 30, 20, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  if (img) {
+    ctx.save();
+    const radius = 25;
+    
+    // Outer glow
+    ctx.fillStyle = 'rgba(244, 200, 200, 0.3)';
+    ctx.beginPath();
+    ctx.arc(x, drawY, radius + 4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Clip to circle
+    ctx.beginPath();
+    ctx.arc(x, drawY, radius, 0, Math.PI * 2);
+    ctx.clip();
+    
+    // Draw image
+    const imgSize = radius * 2.4;
+    ctx.drawImage(img, x - imgSize / 2, drawY - imgSize / 2, imgSize, imgSize);
+    ctx.restore();
+    
+    // Border
+    ctx.strokeStyle = 'rgba(200, 180, 180, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, drawY, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    // Fallback character
+    drawFallbackCharacter(x, drawY);
+  }
+}
+
+function drawFallbackCharacter(x, y) {
+  const t = THEME.level1;
+  
+  // Body
+  ctx.fillStyle = t.playerBody;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 15, 18, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Head
+  ctx.fillStyle = t.playerSkin;
+  ctx.beginPath();
+  ctx.arc(x, y - 10, 14, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Eyes
+  ctx.fillStyle = t.playerDetail;
+  ctx.beginPath();
+  ctx.arc(x - 4, y - 12, 2, 0, Math.PI * 2);
+  ctx.arc(x + 4, y - 12, 2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Blush
+  ctx.fillStyle = t.playerBlush;
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.arc(x - 8, y - 8, 3, 0, Math.PI * 2);
+  ctx.arc(x + 8, y - 8, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawLevel4Cat(x, y, size = 35) {
+  const t = THEME.level2;
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + size * 0.8, size * 0.6, size * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Body
+  ctx.fillStyle = t.catBody;
+  ctx.beginPath();
+  ctx.ellipse(x, y, size * 0.7, size * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Head
+  ctx.beginPath();
+  ctx.arc(x, y - size * 0.4, size * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Ears
+  ctx.fillStyle = t.catEars;
+  ctx.beginPath();
+  ctx.moveTo(x - size * 0.35, y - size * 0.6);
+  ctx.lineTo(x - size * 0.15, y - size * 0.9);
+  ctx.lineTo(x - size * 0.05, y - size * 0.55);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + size * 0.35, y - size * 0.6);
+  ctx.lineTo(x + size * 0.15, y - size * 0.9);
+  ctx.lineTo(x + size * 0.05, y - size * 0.55);
+  ctx.fill();
+  
+  // Eyes
+  ctx.fillStyle = t.catEyes;
+  ctx.beginPath();
+  ctx.ellipse(x - size * 0.15, y - size * 0.45, size * 0.08, size * 0.1, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + size * 0.15, y - size * 0.45, size * 0.08, size * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Nose
+  ctx.fillStyle = t.catNose;
+  ctx.beginPath();
+  ctx.arc(x, y - size * 0.3, size * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawYarn(x, y, size = 20) {
+  const t = THEME.level4;
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + size * 0.8, size * 0.8, size * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Yarn ball
+  ctx.fillStyle = t.yarnColor;
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Yarn texture lines
+  ctx.strokeStyle = t.yarnHighlight;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, size * 0.6, 0.5, 2.5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, size * 0.4, 2, 4);
+  ctx.stroke();
+  
+  // Highlight
+  ctx.fillStyle = t.yarnHighlight;
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawYarnMaze() {
+  const t = THEME.level4;
+  const cellSize = 50;
+  const startX = (canvas.width - level4.mazeGrid[0].length * cellSize) / 2;
+  const startY = 150;
+  
+  // Draw maze cells
+  for (let row = 0; row < level4.mazeGrid.length; row++) {
+    for (let col = 0; col < level4.mazeGrid[0].length; col++) {
+      const x = startX + col * cellSize;
+      const y = startY + row * cellSize;
+      
+      if (level4.mazeGrid[row][col] === 1) {
+        // Obstacle (rock or flower pot)
+        ctx.fillStyle = t.rockColor;
+        ctx.beginPath();
+        ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = t.rockShadow;
+        ctx.beginPath();
+        ctx.arc(x + cellSize / 2 + 3, y + cellSize / 2 + 3, cellSize * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Path
+        ctx.fillStyle = t.pathColor;
+        ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+      }
+    }
+  }
+  
+  // Draw goal marker (where cat is)
+  const goalX = startX + 6 * cellSize + cellSize / 2;
+  const goalY = startY + 4 * cellSize + cellSize / 2;
+  
+  ctx.fillStyle = 'rgba(248, 232, 200, 0.5)';
+  ctx.beginPath();
+  ctx.arc(goalX, goalY, cellSize * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Draw cat at goal
+  drawLevel4Cat(goalX, goalY - 10, 25);
+  
+  // Draw yarn ball
+  const yarnScreenX = startX + level4.yarnX * cellSize + cellSize / 2;
+  const yarnScreenY = startY + level4.yarnY * cellSize + cellSize / 2;
+  drawYarn(yarnScreenX, yarnScreenY, 15);
+  
+  // Draw player position indicator
+  const playerScreenX = startX + level4.mazePlayerX * cellSize + cellSize / 2;
+  const playerScreenY = startY + level4.mazePlayerY * cellSize + cellSize / 2;
+  
+  ctx.strokeStyle = '#F4C8D4';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(playerScreenX, playerScreenY, cellSize * 0.3, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawSlidingPuzzle() {
+  const t = THEME.level4;
+  const puzzleSize = 180;
+  const tileSize = puzzleSize / 3;
+  const startX = (canvas.width - puzzleSize) / 2;
+  const startY = 180;
+  
+  // Puzzle background
+  ctx.fillStyle = t.puzzleBg;
+  ctx.fillRect(startX - 10, startY - 10, puzzleSize + 20, puzzleSize + 20);
+  ctx.strokeStyle = t.puzzleBorder;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(startX - 10, startY - 10, puzzleSize + 20, puzzleSize + 20);
+  
+  // Draw tiles
+  const img = getImage('player');
+  
+  for (let i = 0; i < 9; i++) {
+    const tile = level4.puzzleTiles[i];
+    if (tile === 8) continue; // Skip empty tile
+    
+    const destRow = Math.floor(i / 3);
+    const destCol = i % 3;
+    const x = startX + destCol * tileSize;
+    const y = startY + destRow * tileSize;
+    
+    // Tile background
+    ctx.fillStyle = t.puzzleHighlight;
+    ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+    
+    if (img) {
+      // Draw portion of image
+      const srcRow = Math.floor(tile / 3);
+      const srcCol = tile % 3;
+      const imgTileSize = img.width / 3;
+      
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+      ctx.clip();
+      
+      // Scale image to fit puzzle
+      const scale = puzzleSize / img.width;
+      ctx.drawImage(
+        img,
+        srcCol * imgTileSize, srcRow * imgTileSize, imgTileSize, imgTileSize,
+        x + 2, y + 2, tileSize - 4, tileSize - 4
+      );
+      ctx.restore();
+    } else {
+      // Fallback: numbered tiles
+      ctx.fillStyle = '#F4C8D4';
+      ctx.fillRect(x + 4, y + 4, tileSize - 8, tileSize - 8);
+      
+      ctx.font = '24px sans-serif';
+      ctx.fillStyle = '#5B4848';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(tile + 1), x + tileSize / 2, y + tileSize / 2 + 8);
+    }
+    
+    // Tile border
+    ctx.strokeStyle = t.puzzleBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+  }
+  
+  // Draw moves counter
+  ctx.font = `500 16px ${THEME.fonts.primary}`;
+  ctx.fillStyle = THEME.ui.textPrimary;
+  ctx.textAlign = 'center';
+  ctx.fillText(`Moves: ${level4.puzzleMoves}`, canvas.width / 2, startY + puzzleSize + 40);
+}
+
+function drawLevel4() {
+  drawLevel4Background();
+  
+  if (level4.phase === 'findCat') {
+    // Draw bushes
+    level4.bushes.forEach((bush, index) => {
+      const isShaking = index === level4.shakingBushIndex;
+      drawBush(bush, index, isShaking);
+    });
+    
+    // Draw flying butterflies
+    level4.butterfliesFlying.forEach(bf => {
+      ctx.fillStyle = bf.color;
+      ctx.beginPath();
+      const wingFlap = Math.sin(globalTime * 0.02 + bf.phase) * 0.3;
+      ctx.ellipse(bf.x - 4, bf.y, 5 + wingFlap * 3, 3, -0.3 - wingFlap * 0.2, 0, Math.PI * 2);
+      ctx.ellipse(bf.x + 4, bf.y, 5 + wingFlap * 3, 3, 0.3 + wingFlap * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#8B7878';
+      ctx.beginPath();
+      ctx.ellipse(bf.x, bf.y, 1.5, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    
+    // Draw cat if found but not yet run away
+    if (level4.catFound && !level4.catRunAway) {
+      drawLevel4Cat(level4.catX, level4.catY);
+    }
+    
+    // Draw player
+    drawLevel4Player(level4.playerX, level4.playerY);
+    
+    // Instructions
+    ctx.font = `500 18px ${THEME.fonts.primary}`;
+    ctx.fillStyle = THEME.ui.textPrimary;
+    ctx.textAlign = 'center';
+    ctx.fillText('Tap the bushes to find the cat!', canvas.width / 2, 80);
+    ctx.font = `400 14px ${THEME.fonts.primary}`;
+    ctx.fillStyle = THEME.ui.textSecondary;
+    ctx.fillText(`Bushes checked: ${level4.bushesChecked.length}/${level4.bushes.length}`, canvas.width / 2, 105);
+    
+  } else if (level4.phase === 'yarnPuzzle') {
+    drawYarnMaze();
+    
+    // Instructions
+    ctx.font = `500 18px ${THEME.fonts.primary}`;
+    ctx.fillStyle = THEME.ui.textPrimary;
+    ctx.textAlign = 'center';
+    ctx.fillText('Push the yarn to the cat!', canvas.width / 2, 80);
+    ctx.font = `400 14px ${THEME.fonts.primary}`;
+    ctx.fillStyle = THEME.ui.textSecondary;
+    ctx.fillText('Use arrow buttons to move', canvas.width / 2, 105);
+    
+  } else if (level4.phase === 'memoryPuzzle') {
+    drawSlidingPuzzle();
+    
+    // Instructions
+    ctx.font = `500 18px ${THEME.fonts.primary}`;
+    ctx.fillStyle = THEME.ui.textPrimary;
+    ctx.textAlign = 'center';
+    ctx.fillText('Solve the puzzle!', canvas.width / 2, 80);
+    ctx.font = `400 14px ${THEME.fonts.primary}`;
+    ctx.fillStyle = THEME.ui.textSecondary;
+    ctx.fillText('Tap tiles next to empty space', canvas.width / 2, 105);
+    
+  } else if (level4.phase === 'complete') {
+    // Celebration screen
+    drawCelebration();
+  }
+  
+  // Draw ambient foreground
+  drawAmbientLayer(3);
+}
+
+function drawCelebration() {
+  // Draw blooming flowers
+  level4.bloomingFlowers.forEach(f => {
+    ctx.fillStyle = f.color;
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * Math.PI * 2) / 5;
+      ctx.beginPath();
+      ctx.ellipse(
+        f.x + Math.cos(angle) * f.size * 0.5,
+        f.y + Math.sin(angle) * f.size * 0.5,
+        f.size * 0.4,
+        f.size * 0.4,
+        0, 0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+    ctx.fillStyle = '#F8D888';
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  // Draw cat and player together
+  drawLevel4Cat(canvas.width / 2 - 40, canvas.height / 2);
+  drawLevel4Player(canvas.width / 2 + 40, canvas.height / 2);
+  
+  // Sparkles
+  for (let i = 0; i < 12; i++) {
+    const sx = 80 + (i % 6) * 55 + Math.sin(globalTime * 0.003 + i) * 10;
+    const sy = 150 + Math.floor(i / 6) * 300 + Math.cos(globalTime * 0.004 + i) * 8;
+    drawSparkle(sx, sy, 8);
+  }
+  
+  // Victory text
+  drawSoftOverlay();
+  
+  const t = THEME.ui;
+  const panelW = 260;
+  const panelH = 180;
+  const panelX = canvas.width / 2 - panelW / 2;
+  const panelY = canvas.height / 2 - panelH / 2;
+  
+  drawPanel(panelX, panelY, panelW, panelH);
+  
+  ctx.font = `600 24px ${THEME.fonts.primary}`;
+  ctx.fillStyle = t.textGold;
+  ctx.textAlign = 'center';
+  ctx.fillText('Garden Complete!', canvas.width / 2, panelY + 50);
+  
+  ctx.font = `500 14px ${THEME.fonts.primary}`;
+  ctx.fillStyle = t.textPrimary;
+  ctx.fillText('You found the cat and', canvas.width / 2, panelY + 85);
+  ctx.fillText('solved all the puzzles!', canvas.width / 2, panelY + 105);
+  
+  drawButton(canvas.width / 2, panelY + 150, 'CONTINUE', t.buttonSuccess);
+}
+
+function drawLevel4IntroScreen() {
+  drawLevel4Background();
+  drawAmbientLayer(3);
+  
+  drawSoftOverlay();
+  
+  const t = THEME.ui;
+  const panelW = 300;
+  const panelH = 220;
+  const panelX = canvas.width / 2 - panelW / 2;
+  const panelY = canvas.height / 2 - panelH / 2;
+  
+  drawPanel(panelX, panelY, panelW, panelH);
+  
+  ctx.font = `600 22px ${THEME.fonts.primary}`;
+  ctx.fillStyle = t.textGold;
+  ctx.textAlign = 'center';
+  ctx.fillText('Level 4', canvas.width / 2, panelY + 45);
+  
+  ctx.font = `500 18px ${THEME.fonts.primary}`;
+  ctx.fillStyle = t.textPrimary;
+  ctx.fillText('Cozy Garden Adventure', canvas.width / 2, panelY + 75);
+  
+  ctx.font = `400 14px ${THEME.fonts.primary}`;
+  ctx.fillStyle = t.textSecondary;
+  ctx.fillText('Find the hidden cat in the garden', canvas.width / 2, panelY + 110);
+  ctx.fillText('Help guide the yarn through the maze', canvas.width / 2, panelY + 130);
+  ctx.fillText('Solve the memory puzzle', canvas.width / 2, panelY + 150);
+  
+  drawButton(canvas.width / 2, panelY + 190, 'START', t.buttonSuccess);
+}
+
+function handleLevel4BushClick(x, y) {
+  if (level4.phase !== 'findCat' || level4.catFound) return;
+  
+  for (let i = 0; i < level4.bushes.length; i++) {
+    const bush = level4.bushes[i];
+    const dist = Math.sqrt((x - bush.x) ** 2 + (y - bush.y) ** 2);
+    
+    if (dist < bush.size + 20 && !level4.bushesChecked.includes(i)) {
+      level4.bushesChecked.push(i);
+      level4.shakingBushIndex = i;
+      level4.bushShakeTimer = 500;
+      
+      // Add flying butterflies
+      for (let j = 0; j < 3; j++) {
+        level4.butterfliesFlying.push({
+          x: bush.x + (Math.random() - 0.5) * 30,
+          y: bush.y - 20,
+          phase: Math.random() * Math.PI * 2,
+          color: ['#F4C8D4', '#F8E8B8', '#D4E8F4'][Math.floor(Math.random() * 3)],
+        });
+      }
+      
+      // Check if this is the correct bush
+      if (i === level4.correctBushIndex) {
+        level4.catFound = true;
+        level4.catX = bush.x;
+        level4.catY = bush.y - 20;
+        
+        // After a delay, transition to yarn puzzle
+        setTimeout(() => {
+          level4.catRunAway = true;
+          level4.phase = 'yarnPuzzle';
+          initYarnMaze();
+        }, 1500);
+      }
+      
+      break;
+    }
+  }
+}
+
+function handleLevel4MazeMove(dx, dy) {
+  if (level4.phase !== 'yarnPuzzle' || level4.yarnReachedGoal) return;
+  
+  const newX = level4.mazePlayerX + dx;
+  const newY = level4.mazePlayerY + dy;
+  
+  // Check bounds
+  if (newX < 0 || newX >= level4.mazeGrid[0].length) return;
+  if (newY < 0 || newY >= level4.mazeGrid.length) return;
+  
+  // Check if not obstacle
+  if (level4.mazeGrid[newY][newX] === 1) return;
+  
+  // Move player
+  level4.mazePlayerX = newX;
+  level4.mazePlayerY = newY;
+  
+  // If pushing yarn
+  if (newX === level4.yarnX && newY === level4.yarnY) {
+    const yarnNewX = level4.yarnX + dx;
+    const yarnNewY = level4.yarnY + dy;
+    
+    // Check if yarn can move
+    if (yarnNewX >= 0 && yarnNewX < level4.mazeGrid[0].length &&
+        yarnNewY >= 0 && yarnNewY < level4.mazeGrid.length &&
+        level4.mazeGrid[yarnNewY][yarnNewX] !== 1) {
+      level4.yarnX = yarnNewX;
+      level4.yarnY = yarnNewY;
+      
+      // Check if reached goal (bottom right)
+      if (level4.yarnX === 6 && level4.yarnY === 4) {
+        level4.yarnReachedGoal = true;
+        setTimeout(() => {
+          level4.phase = 'memoryPuzzle';
+          initSlidingPuzzle();
+        }, 1000);
+      }
+    }
+  }
+}
+
+function handleLevel4PuzzleClick(x, y) {
+  if (level4.phase !== 'memoryPuzzle' || level4.puzzleSolved) return;
+  
+  const puzzleSize = 180;
+  const tileSize = puzzleSize / 3;
+  const startX = (canvas.width - puzzleSize) / 2;
+  const startY = 180;
+  
+  // Check if click is within puzzle bounds
+  if (x < startX || x > startX + puzzleSize) return;
+  if (y < startY || y > startY + puzzleSize) return;
+  
+  // Get clicked tile index
+  const col = Math.floor((x - startX) / tileSize);
+  const row = Math.floor((y - startY) / tileSize);
+  const clickedIndex = row * 3 + col;
+  
+  // Check if adjacent to empty tile
+  const validMoves = getValidPuzzleMoves(level4.emptyTileIndex);
+  if (validMoves.includes(clickedIndex)) {
+    // Swap tiles
+    level4.puzzleTiles[level4.emptyTileIndex] = level4.puzzleTiles[clickedIndex];
+    level4.puzzleTiles[clickedIndex] = 8;
+    level4.emptyTileIndex = clickedIndex;
+    level4.puzzleMoves++;
+    
+    // Check if solved
+    if (checkPuzzleSolved()) {
+      level4.puzzleSolved = true;
+      setTimeout(() => {
+        level4.phase = 'complete';
+      }, 500);
+    }
+  }
 }
 
 function drawFinalWinScreen() {
