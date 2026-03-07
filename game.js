@@ -38,6 +38,70 @@ const PIXEL_EFFECT = {
 };
 
 // ===========================================
+// AMBIENT ENVIRONMENT SYSTEM - Cozy Polish
+// ===========================================
+const AMBIENT = {
+  // Parallax speeds (relative to player/time movement)
+  parallax: {
+    farClouds: 0.008,
+    nearClouds: 0.015,
+    farTrees: 0.02,
+    nearTrees: 0.04,
+    grass: 0.05,
+  },
+  
+  // Swaying grass
+  grass: {
+    bladeCount: 35,
+    swaySpeed: 0.003,
+    swayAmount: 6,
+  },
+  
+  // Butterflies
+  butterflies: {
+    count: 5,
+    speed: 0.002,
+    wobble: 15,
+  },
+  
+  // Fireflies (glowing)
+  fireflies: {
+    count: 12,
+    glowSpeed: 0.004,
+    driftSpeed: 0.001,
+  },
+  
+  // Floating particles
+  particles: {
+    count: 20,
+    speed: 0.5,
+    size: 2,
+  },
+  
+  // Falling petals
+  petals: {
+    count: 15,
+    fallSpeed: 0.4,
+    swaySpeed: 0.002,
+    swayAmount: 30,
+  },
+  
+  // Flowers that open/close
+  flowers: {
+    count: 8,
+    openSpeed: 0.001,
+  },
+  
+  // Player idle animation
+  playerIdle: {
+    blinkInterval: 3500,
+    blinkDuration: 150,
+    breathSpeed: 0.003,
+    breathAmount: 1.5,
+  },
+};
+
+// ===========================================
 // COZY PASTEL THEME - Soft, feminine, dreamy
 // ===========================================
 const THEME = {
@@ -372,6 +436,385 @@ let level3 = {
 };
 
 // ===========================================
+// AMBIENT ENVIRONMENT STATE
+// ===========================================
+let ambientState = {
+  // Parallax offset
+  parallaxOffset: 0,
+  
+  // Grass blades
+  grassBlades: [],
+  
+  // Butterflies
+  butterflies: [],
+  
+  // Fireflies
+  fireflies: [],
+  
+  // Floating particles
+  particles: [],
+  
+  // Falling petals
+  petals: [],
+  
+  // Animated flowers
+  flowers: [],
+  
+  // Player idle state
+  playerBlink: {
+    timer: 0,
+    isBlinking: false,
+  },
+  playerBreath: 0,
+  
+  initialized: false,
+};
+
+function initAmbientEnvironment() {
+  if (ambientState.initialized) return;
+  
+  // Initialize grass blades
+  ambientState.grassBlades = [];
+  for (let i = 0; i < AMBIENT.grass.bladeCount; i++) {
+    ambientState.grassBlades.push({
+      x: Math.random() * 500,
+      height: 10 + Math.random() * 15,
+      phase: Math.random() * Math.PI * 2,
+      color: Math.random() < 0.5 ? '#B8D4A8' : '#A8C8A8',
+    });
+  }
+  
+  // Initialize butterflies
+  ambientState.butterflies = [];
+  for (let i = 0; i < AMBIENT.butterflies.count; i++) {
+    ambientState.butterflies.push({
+      x: Math.random() * 400,
+      y: 80 + Math.random() * 200,
+      phase: Math.random() * Math.PI * 2,
+      color: ['#F4C8D4', '#F8E8B8', '#D4E8F4', '#E8D4E8'][Math.floor(Math.random() * 4)],
+      wingPhase: Math.random() * Math.PI * 2,
+    });
+  }
+  
+  // Initialize fireflies
+  ambientState.fireflies = [];
+  for (let i = 0; i < AMBIENT.fireflies.count; i++) {
+    ambientState.fireflies.push({
+      x: Math.random() * 400,
+      y: 100 + Math.random() * 350,
+      phase: Math.random() * Math.PI * 2,
+      glowPhase: Math.random() * Math.PI * 2,
+      driftX: Math.random() * Math.PI * 2,
+      driftY: Math.random() * Math.PI * 2,
+    });
+  }
+  
+  // Initialize floating particles
+  ambientState.particles = [];
+  for (let i = 0; i < AMBIENT.particles.count; i++) {
+    ambientState.particles.push({
+      x: Math.random() * 400,
+      y: Math.random() * 600,
+      size: 1 + Math.random() * 2,
+      alpha: 0.2 + Math.random() * 0.4,
+      speedX: (Math.random() - 0.5) * 0.3,
+      speedY: -Math.random() * 0.5 - 0.2,
+    });
+  }
+  
+  // Initialize falling petals
+  ambientState.petals = [];
+  for (let i = 0; i < AMBIENT.petals.count; i++) {
+    ambientState.petals.push({
+      x: Math.random() * 450,
+      y: Math.random() * 700 - 100,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.02,
+      phase: Math.random() * Math.PI * 2,
+      size: 4 + Math.random() * 4,
+      color: ['#F4C8D4', '#FFE4E8', '#FFF0F4', '#E8D4E8'][Math.floor(Math.random() * 4)],
+    });
+  }
+  
+  // Initialize animated flowers
+  ambientState.flowers = [];
+  for (let i = 0; i < AMBIENT.flowers.count; i++) {
+    ambientState.flowers.push({
+      x: 20 + Math.random() * 360,
+      y: 520 + Math.random() * 60,
+      openPhase: Math.random() * Math.PI * 2,
+      size: 6 + Math.random() * 6,
+      color: ['#F4C8D4', '#F8E8B8', '#FFF8F0'][Math.floor(Math.random() * 3)],
+    });
+  }
+  
+  ambientState.initialized = true;
+}
+
+// ===========================================
+// AMBIENT ENVIRONMENT UPDATE & DRAW
+// ===========================================
+function updateAmbientEnvironment(deltaTime) {
+  if (!ambientState.initialized) initAmbientEnvironment();
+  
+  // Update parallax
+  ambientState.parallaxOffset += deltaTime * 0.01;
+  
+  // Update player idle animation
+  ambientState.playerBlink.timer += deltaTime;
+  if (ambientState.playerBlink.timer > AMBIENT.playerIdle.blinkInterval && !ambientState.playerBlink.isBlinking) {
+    ambientState.playerBlink.isBlinking = true;
+    ambientState.playerBlink.timer = 0;
+  }
+  if (ambientState.playerBlink.isBlinking && ambientState.playerBlink.timer > AMBIENT.playerIdle.blinkDuration) {
+    ambientState.playerBlink.isBlinking = false;
+    ambientState.playerBlink.timer = 0;
+  }
+  ambientState.playerBreath = Math.sin(globalTime * AMBIENT.playerIdle.breathSpeed) * AMBIENT.playerIdle.breathAmount;
+  
+  // Update particles
+  ambientState.particles.forEach(p => {
+    p.x += p.speedX;
+    p.y += p.speedY;
+    
+    // Wrap around
+    if (p.y < -10) {
+      p.y = canvas.height + 10;
+      p.x = Math.random() * canvas.width;
+    }
+    if (p.x < -10) p.x = canvas.width + 10;
+    if (p.x > canvas.width + 10) p.x = -10;
+  });
+  
+  // Update petals
+  ambientState.petals.forEach(p => {
+    p.y += AMBIENT.petals.fallSpeed;
+    p.x += Math.sin(globalTime * AMBIENT.petals.swaySpeed + p.phase) * 0.5;
+    p.rotation += p.rotationSpeed;
+    
+    // Reset when off screen
+    if (p.y > canvas.height + 20) {
+      p.y = -20;
+      p.x = Math.random() * canvas.width;
+    }
+  });
+}
+
+function drawParallaxBackground() {
+  const t = THEME.level1;
+  const offset = ambientState.parallaxOffset;
+  
+  // Far clouds layer (slowest)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  for (let i = 0; i < 4; i++) {
+    const cloudX = ((i * 120 - offset * AMBIENT.parallax.farClouds * 100) % (canvas.width + 100)) - 50;
+    ctx.beginPath();
+    ctx.arc(cloudX, 50 + i * 15, 25, 0, Math.PI * 2);
+    ctx.arc(cloudX + 25, 45 + i * 15, 30, 0, Math.PI * 2);
+    ctx.arc(cloudX + 50, 50 + i * 15, 22, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Near clouds layer (faster)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  for (let i = 0; i < 3; i++) {
+    const cloudX = ((i * 150 + 50 - offset * AMBIENT.parallax.nearClouds * 100) % (canvas.width + 150)) - 75;
+    ctx.beginPath();
+    ctx.arc(cloudX, 80 + i * 25, 20, 0, Math.PI * 2);
+    ctx.arc(cloudX + 22, 75 + i * 25, 26, 0, Math.PI * 2);
+    ctx.arc(cloudX + 45, 78 + i * 25, 18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawSwayingGrass() {
+  ambientState.grassBlades.forEach(blade => {
+    const sway = Math.sin(globalTime * AMBIENT.grass.swaySpeed + blade.phase) * AMBIENT.grass.swayAmount;
+    const x = blade.x % canvas.width;
+    const baseY = canvas.height - 20;
+    
+    ctx.strokeStyle = blade.color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, baseY);
+    ctx.quadraticCurveTo(
+      x + sway * 0.5, 
+      baseY - blade.height * 0.6,
+      x + sway, 
+      baseY - blade.height
+    );
+    ctx.stroke();
+  });
+}
+
+function drawButterflies() {
+  ambientState.butterflies.forEach(bf => {
+    const wobbleX = Math.sin(globalTime * AMBIENT.butterflies.speed + bf.phase) * AMBIENT.butterflies.wobble;
+    const wobbleY = Math.cos(globalTime * AMBIENT.butterflies.speed * 1.3 + bf.phase) * AMBIENT.butterflies.wobble * 0.5;
+    const wingFlap = Math.sin(globalTime * 0.02 + bf.wingPhase) * 0.4;
+    
+    const x = bf.x + wobbleX;
+    const y = bf.y + wobbleY;
+    
+    ctx.fillStyle = bf.color;
+    ctx.save();
+    ctx.translate(x, y);
+    
+    // Wings
+    ctx.beginPath();
+    ctx.ellipse(-5, 0, 6 + wingFlap * 4, 4, -0.3 - wingFlap * 0.2, 0, Math.PI * 2);
+    ctx.ellipse(5, 0, 6 + wingFlap * 4, 4, 0.3 + wingFlap * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Body
+    ctx.fillStyle = '#8B7878';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 2, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+  });
+}
+
+function drawFireflies() {
+  ambientState.fireflies.forEach(ff => {
+    const driftX = Math.sin(globalTime * AMBIENT.fireflies.driftSpeed + ff.driftX) * 20;
+    const driftY = Math.cos(globalTime * AMBIENT.fireflies.driftSpeed * 0.7 + ff.driftY) * 15;
+    const glow = 0.3 + Math.sin(globalTime * AMBIENT.fireflies.glowSpeed + ff.glowPhase) * 0.5;
+    
+    const x = ff.x + driftX;
+    const y = ff.y + driftY;
+    
+    // Outer glow
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, 12);
+    gradient.addColorStop(0, `rgba(255, 248, 200, ${glow})`);
+    gradient.addColorStop(0.5, `rgba(255, 240, 180, ${glow * 0.5})`);
+    gradient.addColorStop(1, 'rgba(255, 240, 180, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Inner bright core
+    ctx.fillStyle = `rgba(255, 255, 220, ${glow + 0.3})`;
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawFloatingParticles() {
+  ambientState.particles.forEach(p => {
+    ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawFallingPetals() {
+  ambientState.petals.forEach(petal => {
+    ctx.save();
+    ctx.translate(petal.x, petal.y);
+    ctx.rotate(petal.rotation);
+    
+    ctx.fillStyle = petal.color;
+    ctx.globalAlpha = 0.7;
+    
+    // Petal shape (soft oval)
+    ctx.beginPath();
+    ctx.ellipse(0, 0, petal.size, petal.size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Subtle highlight
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(-petal.size * 0.2, -petal.size * 0.15, petal.size * 0.4, petal.size * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  });
+}
+
+function drawAnimatedFlowers() {
+  ambientState.flowers.forEach(flower => {
+    const openAmount = 0.6 + Math.sin(globalTime * AMBIENT.flowers.openSpeed + flower.openPhase) * 0.4;
+    const sway = Math.sin(globalTime * 0.002 + flower.openPhase) * 3;
+    
+    const x = flower.x + sway;
+    const y = flower.y;
+    
+    // Stem
+    ctx.strokeStyle = '#98B898';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y + flower.size);
+    ctx.quadraticCurveTo(x + sway * 0.5, y + flower.size * 2, x, y + flower.size * 3);
+    ctx.stroke();
+    
+    // Petals
+    ctx.fillStyle = flower.color;
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+      const petalDist = flower.size * 0.5 * openAmount;
+      ctx.beginPath();
+      ctx.ellipse(
+        x + Math.cos(angle) * petalDist,
+        y + Math.sin(angle) * petalDist,
+        flower.size * 0.35 * openAmount,
+        flower.size * 0.35 * openAmount,
+        0, 0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+    
+    // Center
+    ctx.fillStyle = '#F8D888';
+    ctx.beginPath();
+    ctx.arc(x, y, flower.size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawPlayerGlow(x, y, radius) {
+  const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  gradient.addColorStop(0, 'rgba(255, 240, 230, 0.25)');
+  gradient.addColorStop(0.5, 'rgba(255, 230, 220, 0.12)');
+  gradient.addColorStop(1, 'rgba(255, 230, 220, 0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawAmbientLayer(layer) {
+  // Layer 0: Behind everything (parallax clouds)
+  if (layer === 0) {
+    drawParallaxBackground();
+  }
+  
+  // Layer 1: Ground level (grass, flowers)
+  if (layer === 1) {
+    drawSwayingGrass();
+    drawAnimatedFlowers();
+  }
+  
+  // Layer 2: Mid-air (butterflies, fireflies)
+  if (layer === 2) {
+    drawButterflies();
+    drawFireflies();
+  }
+  
+  // Layer 3: Foreground (particles, petals)
+  if (layer === 3) {
+    drawFloatingParticles();
+    drawFallingPetals();
+  }
+}
+
+// ===========================================
 // PLAYER OBJECT (Level 1)
 // ===========================================
 const player = {
@@ -430,12 +873,14 @@ const player = {
 
   draw() {
     const img = getImage('player');
-    const drawY = this.y + this.bobOffset;
+    // Add breathing animation from ambient state
+    const breathOffset = ambientState.playerBreath || 0;
+    const drawY = this.y + this.bobOffset + breathOffset;
     
-    // Soft shadow
+    // Soft shadow (pulses slightly with breath)
     ctx.fillStyle = 'rgba(168, 152, 136, 0.2)';
     ctx.beginPath();
-    ctx.ellipse(this.x + this.width / 2, this.y + this.height + 5, this.width * 0.4, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(this.x + this.width / 2, this.y + this.height + 5, this.width * 0.4 + breathOffset * 0.5, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     
     if (img) {
@@ -445,10 +890,11 @@ const player = {
       const imgCy = drawY + this.height / 2;
       const radius = Math.min(this.width, this.height) / 2;
       
-      // Soft outer glow
-      ctx.fillStyle = 'rgba(244, 200, 200, 0.3)';
+      // Soft outer glow (pulses gently)
+      const glowPulse = 0.3 + Math.sin(globalTime * 0.002) * 0.1;
+      ctx.fillStyle = `rgba(244, 200, 200, ${glowPulse})`;
       ctx.beginPath();
-      ctx.arc(imgCx, imgCy, radius + 4, 0, Math.PI * 2);
+      ctx.arc(imgCx, imgCy, radius + 4 + breathOffset * 0.3, 0, Math.PI * 2);
       ctx.fill();
       
       // Clip to circle
@@ -475,6 +921,8 @@ const player = {
   drawFallback(drawY) {
     const t = THEME.level1;
     const cx = this.x + this.width / 2;
+    const breathOffset = ambientState.playerBreath || 0;
+    const isBlinking = ambientState.playerBlink?.isBlinking || false;
 
     // Soft shadow
     ctx.fillStyle = 'rgba(168, 152, 136, 0.2)';
@@ -482,10 +930,10 @@ const player = {
     ctx.ellipse(cx, this.y + this.height + 5, this.width * 0.4, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body - soft rounded shape
+    // Body - soft rounded shape with breathing
     ctx.fillStyle = t.playerBody;
     ctx.beginPath();
-    ctx.ellipse(cx, drawY + 48, 22, 25, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, drawY + 48, 22 + breathOffset * 0.3, 25 + breathOffset * 0.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Head
@@ -503,12 +951,26 @@ const player = {
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Eyes - soft dots
-    ctx.fillStyle = t.playerDetail;
-    ctx.beginPath();
-    ctx.arc(cx - 5, drawY + 16, 2.5, 0, Math.PI * 2);
-    ctx.arc(cx + 5, drawY + 16, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    // Eyes - with blinking animation
+    if (isBlinking) {
+      // Closed eyes - happy arcs
+      ctx.strokeStyle = t.playerDetail;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx - 5, drawY + 16, 3, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx + 5, drawY + 16, 3, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    } else {
+      // Open eyes - soft dots
+      ctx.fillStyle = t.playerDetail;
+      ctx.beginPath();
+      ctx.arc(cx - 5, drawY + 16, 2.5, 0, Math.PI * 2);
+      ctx.arc(cx + 5, drawY + 16, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Gentle smile
     ctx.strokeStyle = t.playerDetail;
@@ -825,6 +1287,9 @@ function drawLevel2Background() {
   gradient.addColorStop(1, t.bgGradientBottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Parallax clouds layer
+  drawAmbientLayer(0);
 
   // Soft light rays
   ctx.save();
@@ -840,6 +1305,9 @@ function drawLevel2Background() {
   ctx.restore();
 
   drawGardenDecorations();
+  
+  // Butterflies and fireflies in garden
+  drawAmbientLayer(2);
 }
 
 function drawGardenDecorations() {
@@ -1187,6 +1655,17 @@ function drawCat(offset, cellSize) {
   const walkFrame = catAnimation.isWalking ? Math.sin(globalTime * 0.03) : 0;
 
   ctx.save();
+  
+  // === SOFT GLOW around cat ===
+  const glowPulse = 0.15 + Math.sin(globalTime * 0.002) * 0.05;
+  const glowGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 2);
+  glowGradient.addColorStop(0, `rgba(255, 248, 230, ${glowPulse})`);
+  glowGradient.addColorStop(0.5, `rgba(255, 240, 220, ${glowPulse * 0.5})`);
+  glowGradient.addColorStop(1, 'rgba(255, 240, 220, 0)');
+  ctx.fillStyle = glowGradient;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 2, 0, Math.PI * 2);
+  ctx.fill();
 
   // === SOFT SHADOW ===
   ctx.fillStyle = t.catShadow;
@@ -1544,6 +2023,9 @@ function drawLevel3Background() {
   gradient.addColorStop(1, t.bgBottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Parallax clouds (far layer)
+  drawAmbientLayer(0);
 
   // Soft clouds
   ctx.fillStyle = t.cloudColor;
@@ -1809,6 +2291,9 @@ function drawLevel3() {
   const py = canvas.height - 100;
   const runBob = Math.sin(globalTime * 0.015) * 3;
   const legFrame = Math.sin(globalTime * 0.02);
+  
+  // Soft glow around player
+  drawPlayerGlow(px, py + 20, 50);
 
   // Shadow
   ctx.fillStyle = 'rgba(168, 152, 136, 0.25)';
@@ -2601,6 +3086,9 @@ function gameLoop(timestamp) {
   if (deltaTime > 100) deltaTime = 16;
   lastTime = timestamp;
   globalTime = timestamp;
+  
+  // Update ambient environment (always running for cozy feel)
+  updateAmbientEnvironment(deltaTime);
 
   if (gameState === 'playing') {
     drawLevel1Background();
@@ -2620,59 +3108,102 @@ function gameLoop(timestamp) {
     updateFallingItems(deltaTime);
 
     drawFallingItems();
+    
+    // Draw player with soft glow
+    const playerCx = player.x + player.width / 2;
+    const playerCy = player.y + player.height / 2;
+    drawPlayerGlow(playerCx, playerCy, player.width * 1.2);
     player.draw();
+    
+    // Draw foreground ambient (particles, petals)
+    drawAmbientLayer(3);
+    
     drawUI();
 
   } else if (gameState === 'level2') {
     drawLevel2Background();
     updateCatAnimation(deltaTime);
     drawMinefield();
+    
+    // Draw foreground ambient for level 2
+    drawAmbientLayer(3);
+    
     drawLevel2UI();
 
   } else if (gameState === 'level3') {
     updateLevel3(deltaTime);
     drawLevel3();
+    
+    // Draw foreground ambient for level 3
+    drawAmbientLayer(3);
 
   } else if (gameState === 'start') {
     drawLevel1Background();
     player.init();
+    
+    // Draw player with glow on start screen
+    const playerCx = player.x + player.width / 2;
+    const playerCy = player.y + player.height / 2;
+    drawPlayerGlow(playerCx, playerCy, player.width * 1.2);
     player.draw();
+    
+    // Draw foreground ambient
+    drawAmbientLayer(3);
+    
     drawStartScreen();
 
   } else if (gameState === 'level1Win') {
     drawLevel1Background();
+    
+    const playerCx = player.x + player.width / 2;
+    const playerCy = player.y + player.height / 2;
+    drawPlayerGlow(playerCx, playerCy, player.width * 1.2);
     player.draw();
+    
+    drawAmbientLayer(3);
     drawLevel1WinScreen();
 
   } else if (gameState === 'level2Intro') {
     drawLevel2Background();
+    drawAmbientLayer(3);
     drawLevel2IntroScreen();
 
   } else if (gameState === 'level3Intro') {
     drawLevel3Background();
+    drawAmbientLayer(3);
     drawLevel3IntroScreen();
 
   } else if (gameState === 'level2Hit') {
     drawLevel2Background();
     drawMinefield();
+    drawAmbientLayer(3);
     drawLevel2HitScreen();
 
   } else if (gameState === 'level2GameOver') {
     drawLevel2Background();
     drawMinefield();
+    drawAmbientLayer(3);
     drawLevel2GameOverScreen();
 
   } else if (gameState === 'level3GameOver') {
     drawLevel3Background();
+    drawAmbientLayer(3);
     drawLevel3GameOverScreen();
 
   } else if (gameState === 'lose') {
     drawLevel1Background();
+    
+    const playerCx = player.x + player.width / 2;
+    const playerCy = player.y + player.height / 2;
+    drawPlayerGlow(playerCx, playerCy, player.width * 1.2);
     player.draw();
+    
+    drawAmbientLayer(3);
     drawLoseScreen();
 
   } else if (gameState === 'finalWin') {
     drawLevel2Background();
+    drawAmbientLayer(3);
     drawFinalWinScreen();
   }
 
@@ -2692,6 +3223,9 @@ function drawLevel1Background() {
   gradient.addColorStop(1, t.grassColor);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Parallax clouds layer (behind everything)
+  drawAmbientLayer(0);
 
   // Grass with gentle waves
   ctx.fillStyle = t.grassColor;
@@ -2723,6 +3257,9 @@ function drawLevel1Background() {
 
   // Soft clouds
   drawClouds();
+  
+  // Swaying grass and animated flowers
+  drawAmbientLayer(1);
 
   // Small flowers in grass
   ctx.globalAlpha = 0.6;
@@ -2732,6 +3269,9 @@ function drawLevel1Background() {
     drawSmallFlower(fx, fy, 5, i % 3);
   }
   ctx.globalAlpha = 1;
+  
+  // Butterflies and fireflies
+  drawAmbientLayer(2);
 }
 
 function drawClouds() {
@@ -2771,6 +3311,7 @@ function drawClouds() {
 async function init() {
   await preloadAssets();
   player.init();
+  initAmbientEnvironment(); // Initialize cozy ambient effects
   requestAnimationFrame(gameLoop);
 }
 
