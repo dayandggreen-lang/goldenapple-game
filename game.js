@@ -294,7 +294,7 @@ const THEME = {
 // ===========================================
 const GAMEPLAY = {
   level1: {
-    targetFruits: 3,
+    targetFruits: 20,
     startingLives: 3,
     playerSpeed: 260,
     playerAcceleration: 1000,
