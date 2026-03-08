@@ -3705,11 +3705,11 @@ if (upBtn) {
   upBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (gameState === 'level2') movePlayer(0, -1);
-    if (gameState === 'level3') moveLevel3Player(-1);
+    if (gameState === 'level3') moveLevel3Player(1);
   });
   upBtn.addEventListener('mousedown', () => {
     if (gameState === 'level2') movePlayer(0, -1);
-    if (gameState === 'level3') moveLevel3Player(-1);
+    if (gameState === 'level3') moveLevel3Player(1);
   });
 }
 
@@ -3717,11 +3717,11 @@ if (downBtn) {
   downBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (gameState === 'level2') movePlayer(0, 1);
-    if (gameState === 'level3') moveLevel3Player(1);
+    if (gameState === 'level3') moveLevel3Player(-1);
   });
   downBtn.addEventListener('mousedown', () => {
     if (gameState === 'level2') movePlayer(0, 1);
-    if (gameState === 'level3') moveLevel3Player(1);
+    if (gameState === 'level3') moveLevel3Player(-1);
   });
 }
 
