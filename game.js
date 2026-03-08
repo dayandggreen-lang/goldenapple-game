@@ -27,8 +27,8 @@ const ASSETS = {
   level2Background: './assets/garden-bg.png',
   level3Background: './assets/dreamy-path.png',
   runner: './assets/anya.png',
-  obstacle: './assets/obstacle.png',
-  collectible: './assets/collectible.png',
+  obstacle: './assets/dior.png',
+  collectible: './assets/tufli.png',
 };
 
 // ===========================================
