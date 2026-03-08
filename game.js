@@ -3298,9 +3298,9 @@ function drawStartScreen() {
   ctx.fillStyle = t.textSecondary;
   ctx.fillText('A cozy mini-game collection', canvas.width / 2, panelY + 80);
   
-  ctx.fillText('Лови картье и кроканты, избегай отломи и барни', canvas.width / 2, panelY + 120);
-  ctx.fillText('Дальше ждет Ириска', canvas.width / 2, panelY + 145);
-  ctx.fillText('Run through the dreamy path', canvas.width / 2, panelY + 170);
+  ctx.fillText('Лови картье и кроканты', canvas.width / 2, panelY + 120);
+  ctx.fillText('Избегай отломи и барни', canvas.width / 2, panelY + 145);
+  ctx.fillText('Дальше ждет Ириска', canvas.width / 2, panelY + 170);
 
   drawButton(canvas.width / 2, panelY + 220, 'PLAY', t.buttonSuccess);
 }
@@ -3323,7 +3323,7 @@ function drawLevel1WinScreen() {
 
   ctx.font = `500 15px ${THEME.fonts.primary}`;
   ctx.fillStyle = t.textPrimary;
-  ctx.fillText(`${score} fruits collected!`, canvas.width / 2, panelY + 90);
+  ctx.fillText(`${score} Все богатства собраны!`, canvas.width / 2, panelY + 90);
   ctx.fillStyle = t.textSecondary;
   ctx.fillText('Next: Garden Crossing', canvas.width / 2, panelY + 115);
 
