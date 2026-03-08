@@ -320,10 +320,10 @@ const GAMEPLAY = {
   },
 
   level3: {
-    duration: 20000,        // 20 seconds
+    duration: 30000,        // 20 seconds
     lanes: 3,
     laneWidth: 80,
-    playerSpeed: 5,
+    playerSpeed: 3,
     obstacleSpeed: 4,
     obstacleSpawnRate: 1200,
     collectibleSpawnRate: 2000,
