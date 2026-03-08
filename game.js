@@ -3652,8 +3652,8 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (gameState === 'level3') {
-    if (e.key === 'ArrowUp' || e.key === 'w') moveLevel3Player(-1);
-    if (e.key === 'ArrowDown' || e.key === 's') moveLevel3Player(1);
+    if (e.key === 'ArrowUp' || e.key === 'w') moveLevel3Player(1);
+    if (e.key === 'ArrowDown' || e.key === 's') moveLevel3Player(-1);
   }
 
   if (e.key === 'Enter' || e.key === ' ') handleButtonClick();
