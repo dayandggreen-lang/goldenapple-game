@@ -3298,8 +3298,8 @@ function drawStartScreen() {
   ctx.fillStyle = t.textSecondary;
   ctx.fillText('A cozy mini-game collection', canvas.width / 2, panelY + 80);
   
-  ctx.fillText('Catch fruits, avoid veggies', canvas.width / 2, panelY + 120);
-  ctx.fillText('Guide the cat through the garden', canvas.width / 2, panelY + 145);
+  ctx.fillText('Лови картье и кроканты, избегай отломи и барни', canvas.width / 2, panelY + 120);
+  ctx.fillText('Дальше ждет Ириска', canvas.width / 2, panelY + 145);
   ctx.fillText('Run through the dreamy path', canvas.width / 2, panelY + 170);
 
   drawButton(canvas.width / 2, panelY + 220, 'PLAY', t.buttonSuccess);
@@ -3348,10 +3348,10 @@ function drawLevel2IntroScreen() {
 
   ctx.font = `500 13px ${THEME.fonts.primary}`;
   ctx.fillStyle = t.textSecondary;
-  ctx.fillText('Guide the cute cat through', canvas.width / 2, panelY + 85);
-  ctx.fillText('the magical garden!', canvas.width / 2, panelY + 105);
-  ctx.fillText('Reach the golden GOAL at the top', canvas.width / 2, panelY + 135);
-  ctx.fillText('Avoid hidden dangers', canvas.width / 2, panelY + 155);
+  ctx.fillText('Проведи Ириску сквозь', canvas.width / 2, panelY + 85);
+  ctx.fillText('магический сад!', canvas.width / 2, panelY + 105);
+  ctx.fillText('В конце на золотом поле', canvas.width / 2, panelY + 135);
+  ctx.fillText('Ириску ждет корм и кровать', canvas.width / 2, panelY + 155);
 
   drawButton(canvas.width / 2, panelY + 200, 'START', t.buttonSuccess);
 }
